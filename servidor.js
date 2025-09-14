@@ -694,14 +694,14 @@ app.post('/sync-user', async (req, res) => {
       // ACTUALIZAR USUARIO EXISTENTE
       await client.query(
         'UPDATE users SET username = $1, password_hash = $2, act_desact = $3 WHERE id = $4',
-        [usuario, password, activo ? 'NORMAL' : 'BLOQUEADO', id]
+        [usuario, password, activo ? 'SI' : 'NO', id]
       );
       console.log(`✅ Usuario ${usuario} actualizado en Supabase`);
     } else {
       // CREAR NUEVO USUARIO
       await client.query(
         'INSERT INTO users (id, username, password_hash, act_desact, estado_seguridad) VALUES ($1, $2, $3, $4, $5)',
-        [id, usuario, password, activo ? 'NORMAL' : 'BLOQUEADO']
+        [id, usuario, password, activo ? 'SI' : 'NO', 'NORMAL']
       );
       console.log(`✅ Usuario ${usuario} creado en Supabase`);
     }
