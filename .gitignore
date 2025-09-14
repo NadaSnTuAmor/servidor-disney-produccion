@@ -1,0 +1,12 @@
+# Variables de entorno
+.env
+.env.local
+.env.production
+
+# Archivos sensibles
+config.js
+secrets.js
+credentials.json
+
+# Node modules
+node_modules/
