@@ -678,6 +678,12 @@ app.post('/sync-user', async (req, res) => {
     if (action === 'sync_emails') {
       console.log(`📧 Sincronizando correos para usuario ${usuario}`);
       return res.json({ status: 'emails_synced' });
+	  
+	  const client = await createConnection();
+	  await client.query('UPDATE users SET correos = $1 WHERE id = $2', [correos, id]);
+	  await client.end();
+	  
+	  return res.json({ status: 'emails_synced' });
     }
     
     // SINCRONIZACIÓN NORMAL DE USUARIO
