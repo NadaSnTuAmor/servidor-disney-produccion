@@ -147,6 +147,7 @@ function authenticateJWT(req, res, next) {
       code: 'NO_TOKEN'
     });
   }
+
   const token = authHeader.substring(7); // Remove 'Bearer '
   const verification = verifyToken(token);
   if (verification.valid) {
@@ -195,7 +196,6 @@ async function enviarAlertaWhatsApp(numeroDestino, mensaje) {
       chatId: `${numeroDestino}@c.us`,
       message: mensaje
     };
-
     const response = await axios.post(url, data);
     console.log('✅ WhatsApp enviado exitosamente:', response.data);
     return response.data;
@@ -289,7 +289,6 @@ async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
 
 app.use(cors());
 app.use(express.json());
-
 app.use((req, res, next) => {
   console.log(`🔍 ${req.method} ${req.path}`);
   console.log('📦 Body:', req.body);
@@ -496,16 +495,13 @@ app.post('/auth/login', async (req, res) => {
 // RENOVAR TOKEN
 app.post('/auth/refresh', (req, res) => {
   const { token } = req.body;
-  
   if (!token) {
     return res.status(400).json({
       success: false,
       error: 'Token requerido para renovar'
     });
   }
-  
   const refreshResult = refreshToken(token);
-  
   if (refreshResult.success) {
     res.json({
       success: true,
@@ -641,7 +637,6 @@ app.get('/api/status', (req, res) => {
 });
 
 // MANTENER TODOS TUS ENDPOINTS EXISTENTES
-
 // ENDPOINT PRINCIPAL - MANTIENE TODO + AGREGA ELIMINACIÓN (SIN CAMBIOS)
 // ENDPOINT PARA SINCRONIZAR GOOGLE SHEETS → SUPABASE
 app.post('/sync-user', async (req, res) => {
@@ -674,16 +669,39 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
     
-    // MANEJAR SINCRONIZACIÓN DE CORREOS
+    // 🔧 MANEJAR SINCRONIZACIÓN DE CORREOS - CORREGIDO
     if (action === 'sync_emails') {
       console.log(`📧 Sincronizando correos para usuario ${usuario}`);
-      return res.json({ status: 'emails_synced' });
-	  
-	  const client = await createConnection();
-	  await client.query('UPDATE users SET correos = $1 WHERE id = $2', [correos, id]);
-	  await client.end();
-	  
-	  return res.json({ status: 'emails_synced' });
+      console.log('📧 Correos recibidos:', correos);
+      
+      const client = await createConnection();
+      
+      try {
+        // Actualizar correos en tabla cuentas
+        const result = await client.query(
+          'UPDATE cuentas SET direccion_de_correo_electronico = $1 WHERE id = $2 RETURNING *',
+          [correos, id]
+        );
+        
+        if (result.rowCount > 0) {
+          console.log(`✅ Correos actualizados para usuario ${usuario}`);
+          console.log('📧 Nuevos correos guardados:', correos);
+        } else {
+          console.log(`⚠️ No se encontró usuario con ID ${id} en tabla cuentas`);
+        }
+      } catch (updateError) {
+        console.error('❌ Error actualizando correos:', updateError);
+        throw updateError;
+      } finally {
+        await client.end();
+      }
+      
+      return res.json({
+        status: 'emails_synced',
+        usuario: usuario,
+        correos_actualizados: correos.length,
+        correos: correos
+      });
     }
     
     // SINCRONIZACIÓN NORMAL DE USUARIO
