@@ -632,7 +632,7 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
     
-    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN DEFINITIVA CORREGIDA
+    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN CON MANEJO DE CONFLICTOS
     if (action === 'sync_emails') {
       console.log(`📧 Iniciando sync_emails para ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
@@ -673,7 +673,7 @@ app.post('/sync-user', async (req, res) => {
           
           console.log(`📧 Procesando [${i+1}/${correosArray.length}]: ${correo}`);
           
-          // Buscar/crear cuenta
+          // 🔧 BUSCAR/CREAR CUENTA - CON MANEJO DE CONFLICTOS
           let accountResult = await client.query(
             'SELECT id FROM accounts WHERE email_address = $1',
             [correo]
@@ -683,11 +683,25 @@ app.post('/sync-user', async (req, res) => {
           if (accountResult.rows.length > 0) {
             accountId = accountResult.rows[0].id;
           } else {
-            const newAccount = await client.query(
-              'INSERT INTO accounts (email_address) VALUES ($1) RETURNING id',
-              [correo]
-            );
-            accountId = newAccount.rows[0].id;
+            try {
+              const newAccount = await client.query(
+                'INSERT INTO accounts (email_address) VALUES ($1) RETURNING id',
+                [correo]
+              );
+              accountId = newAccount.rows[0].id;
+            } catch (insertError) {
+              if (insertError.code === '23505') {
+                // Conflicto de clave única - buscar nuevamente
+                const retryResult = await client.query(
+                  'SELECT id FROM accounts WHERE email_address = $1',
+                  [correo]
+                );
+                accountId = retryResult.rows[0].id;
+                console.log(`🔄 Conflicto resuelto para ${correo}, usando ID: ${accountId}`);
+              } else {
+                throw insertError;
+              }
+            }
           }
           
           // Manejar relación user_accounts
