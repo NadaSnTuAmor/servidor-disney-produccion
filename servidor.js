@@ -632,7 +632,7 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
     
-    // 🔧 MANEJAR SINCRONIZACIÓN DE CORREOS - CORREGIDO CON ROW_ID
+    // 🔧 MANEJAR SINCRONIZACIÓN DE CORREOS - CORREGIDO CON MANEJO DE CONFLICTOS
     if (action === 'sync_emails') {
       console.log(`📧 Sincronizando correos para usuario ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
@@ -674,13 +674,34 @@ app.post('/sync-user', async (req, res) => {
             accountId = accountResult.rows[0].id;
             console.log(`✅ Cuenta existente encontrada: ${accountId}`);
           } else {
-            // 4️⃣ CREAR NUEVA CUENTA
-            const newAccountResult = await client.query(
-              'INSERT INTO accounts (email_address) VALUES ($1) RETURNING id',
-              [correo]
-            );
-            accountId = newAccountResult.rows[0].id;
-            console.log(`✅ Nueva cuenta creada: ${accountId}`);
+            // 4️⃣ CREAR NUEVA CUENTA CON MANEJO DE CONFLICTOS
+            try {
+              const newAccountResult = await client.query(
+                'INSERT INTO accounts (email_address) VALUES ($1) RETURNING id',
+                [correo]
+              );
+              accountId = newAccountResult.rows[0].id;
+              console.log(`✅ Nueva cuenta creada: ${accountId}`);
+            } catch (insertError) {
+              if (insertError.code === '23505') {
+                // Conflicto de clave única - el correo ya existe, buscar nuevamente
+                console.log(`⚠️ Conflicto detectado, re-buscando cuenta para: ${correo}`);
+                const retryAccountResult = await client.query(
+                  'SELECT id FROM accounts WHERE email_address = $1',
+                  [correo]
+                );
+                if (retryAccountResult.rows.length > 0) {
+                  accountId = retryAccountResult.rows[0].id;
+                  console.log(`✅ Cuenta encontrada en reintento: ${accountId}`);
+                } else {
+                  console.error(`❌ Error crítico: no se pudo crear ni encontrar cuenta para: ${correo}`);
+                  continue; // Saltar este correo
+                }
+              } else {
+                console.error(`❌ Error inesperado creando cuenta:`, insertError);
+                throw insertError;
+              }
+            }
           }
           
           // 5️⃣ VERIFICAR SI YA EXISTE RELACIÓN USER_ACCOUNTS CON ESE ROW_ID
@@ -738,7 +759,7 @@ app.post('/sync-user', async (req, res) => {
         correos_nuevos: correosNuevos,
         correos_actualizados: correosActualizados,
         correos: correosArray,
-        estructura: 'Relacional con row_id'
+        estructura: 'Relacional con row_id + manejo de conflictos'
       });
     }
     
