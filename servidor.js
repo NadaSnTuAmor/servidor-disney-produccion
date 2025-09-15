@@ -1,6 +1,5 @@
 // ⚠️ IMPORTANTE: Cargar variables de entorno PRIMERO
 require('dotenv').config();
-
 const express = require('express');
 const { Client } = require('pg');
 const cors = require('cors');
@@ -9,10 +8,8 @@ const fs = require('fs');
 const TelegramBot = require('node-telegram-bot-api');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 // 🛡️ CONFIGURACIÓN SEGURA - DESDE VARIABLES DE ENTORNO
 // Nueva configuración para PostgreSQL/Supabase
 const DB_CONFIG = {
@@ -21,45 +18,37 @@ const DB_CONFIG = {
     rejectUnauthorized: false
   }
 };
-
 // Nueva función para crear conexión
 async function createConnection() {
   const client = new Client(DB_CONFIG);
   await client.connect();
   return client;
 }
-
 const GMAIL_CONFIG = {
   CLIENT_ID: process.env.GMAIL_CLIENT_ID,
   CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET,
   REDIRECT_URL: process.env.GMAIL_REDIRECT_URL || 'http://localhost:3000/oauth2callback',
   REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN
 };
-
 const CORREO_PRINCIPAL = process.env.CORREO_PRINCIPAL;
-
 const TELEGRAM_CONFIG = {
   BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
   YOUR_CHAT_ID: process.env.TELEGRAM_CHAT_ID
 };
-
 const GREEN_API_CONFIG = {
   idInstance: process.env.GREEN_API_ID_INSTANCE,
   apiTokenInstance: process.env.GREEN_API_API_TOKEN_INSTANCE,
   baseUrl: 'https://api.green-api.com'
 };
-
 const ADMIN_CONFIG = {
   numeroWhatsApp: process.env.ADMIN_WHATSAPP
 };
-
 // JWT CONFIGURATION Y FUNCIONES
 const JWT_CONFIG = {
   SECRET: process.env.JWT_SECRET,
   EXPIRATION: '20m',
   ALGORITHM: 'HS256'
 };
-
 // 🔐 VALIDAR QUE TODAS LAS VARIABLES EXISTEN
 const requiredEnvVars = [
   'DATABASE_URL', 'GREEN_API_ID_INSTANCE', 'GREEN_API_API_TOKEN_INSTANCE', 'TELEGRAM_BOT_TOKEN',
@@ -67,27 +56,22 @@ const requiredEnvVars = [
   'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN', 'CORREO_PRINCIPAL',
   'JWT_SECRET'
 ];
-
 let missingVars = [];
 requiredEnvVars.forEach(varName => {
   if (!process.env[varName]) {
     missingVars.push(varName);
   }
 });
-
 if (missingVars.length > 0) {
   console.error('❌ FALTAN VARIABLES DE ENTORNO:', missingVars);
   console.error('📝 Asegúrate de crear el archivo .env con todas las variables');
   process.exit(1);
 }
-
 console.log('✅ Todas las variables de entorno cargadas correctamente');
 console.log('🛡️ Credenciales protegidas - NO expuestas en código');
 console.log('🔐 JWT Ultra Seguro configurado correctamente');
-
 // Crear instancia del bot Telegram
 const telegramBot = new TelegramBot(TELEGRAM_CONFIG.BOT_TOKEN);
-
 // FUNCIÓN PARA GENERAR TOKEN
 function generateToken(user) {
   const payload = {
@@ -100,7 +84,6 @@ function generateToken(user) {
   console.log(`🔐 Token generado para ${user.username} - Expira en 20 minutos`);
   return token;
 }
-
 // FUNCIÓN PARA VERIFICAR TOKEN
 function verifyToken(token) {
   try {
@@ -116,7 +99,6 @@ function verifyToken(token) {
     return { valid: false, needsRefresh: false, error: error.message };
   }
 }
-
 // FUNCIÓN PARA RENOVAR TOKEN (SLIDING EXPIRATION)
 function refreshToken(oldToken) {
   try {
@@ -135,7 +117,6 @@ function refreshToken(oldToken) {
     return { success: false, error: error.message };
   }
 }
-
 // MIDDLEWARE JWT CON SLIDING EXPIRATION
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -147,7 +128,6 @@ function authenticateJWT(req, res, next) {
       code: 'NO_TOKEN'
     });
   }
-
   const token = authHeader.substring(7); // Remove 'Bearer '
   const verification = verifyToken(token);
   if (verification.valid) {
@@ -177,7 +157,6 @@ function authenticateJWT(req, res, next) {
     });
   }
 }
-
 // 🚨 TUS FUNCIONES EXISTENTES (MANTENIDAS INTACTAS)
 async function enviarAlertaTelegram(mensaje) {
   try {
@@ -187,7 +166,6 @@ async function enviarAlertaTelegram(mensaje) {
     console.error('❌ Error enviando alerta a Telegram:', error);
   }
 }
-
 async function enviarAlertaWhatsApp(numeroDestino, mensaje) {
   try {
     const url = `${GREEN_API_CONFIG.baseUrl}/waInstance${GREEN_API_CONFIG.idInstance}/sendMessage/${GREEN_API_CONFIG.apiTokenInstance}`;
@@ -204,7 +182,6 @@ async function enviarAlertaWhatsApp(numeroDestino, mensaje) {
     throw error;
   }
 }
-
 // TU FUNCIÓN DUAL EXISTENTE (SIN CAMBIOS)
 async function enviarAlertaDual(mensaje, numeroCliente = null) {
   try {
@@ -264,7 +241,6 @@ async function enviarAlertaDual(mensaje, numeroCliente = null) {
     };
   }
 }
-
 // TUS FUNCIONES DE ALERTA EXISTENTES (SIN CAMBIOS)
 async function alertaRoboDetectado(usuario, correo, numeroCliente = null) {
   const mensaje = `🚨 ROBO DETECTADO - DISNEY+
@@ -276,7 +252,6 @@ async function alertaRoboDetectado(usuario, correo, numeroCliente = null) {
 🛡️ Sistema de seguridad dual activo`;
   return await enviarAlertaDual(mensaje, numeroCliente);
 }
-
 async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
   const mensaje = `✅ USUARIO REACTIVADO - DISNEY+
 👤 Usuario: ${usuario}
@@ -286,7 +261,6 @@ async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
 🛡️ Sistema de seguridad dual activo`;
   return await enviarAlertaDual(mensaje, numeroCliente);
 }
-
 app.use(cors());
 app.use(express.json());
 app.use((req, res, next) => {
@@ -294,7 +268,6 @@ app.use((req, res, next) => {
   console.log('📦 Body:', req.body);
   next();
 });
-
 // TU FUNCIÓN GMAIL EXISTENTE (SIN CAMBIOS)
 async function connectGmail() {
   const oAuth2Client = new google.auth.OAuth2(
@@ -308,7 +281,6 @@ async function connectGmail() {
   const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
   return gmail;
 }
-
 // TU FUNCIÓN BUSCAR CORREOS (SIN CAMBIOS)
 async function buscarCorreosEnGmail(emailBuscado) {
   try {
@@ -390,7 +362,6 @@ async function buscarCorreosEnGmail(emailBuscado) {
     return [];
   }
 }
-
 // MIDDLEWARE PARA FUNCIONES EXISTENTES
 function authenticateUser(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -399,7 +370,6 @@ function authenticateUser(req, res, next) {
   }
   next();
 }
-
 // LOGIN CON JWT
 // LOGIN JWT CON SUPABASE POSTGRESQL
 app.post('/auth/login', async (req, res) => {
@@ -491,7 +461,6 @@ app.post('/auth/login', async (req, res) => {
     });
   }
 });
-
 // RENOVAR TOKEN
 app.post('/auth/refresh', (req, res) => {
   const { token } = req.body;
@@ -520,7 +489,6 @@ app.post('/auth/refresh', (req, res) => {
     });
   }
 });
-
 // PERFIL DE USUARIO JWT
 app.get('/auth/profile', authenticateJWT, (req, res) => {
   res.json({
@@ -533,7 +501,6 @@ app.get('/auth/profile', authenticateJWT, (req, res) => {
     }
   });
 });
-
 // LOGOUT JWT
 app.post('/auth/logout', authenticateJWT, (req, res) => {
   console.log(`👋 Logout JWT para usuario: ${req.user.username}`);
@@ -542,7 +509,6 @@ app.post('/auth/logout', authenticateJWT, (req, res) => {
     message: 'Logout exitoso - elimina el token del cliente'
   });
 });
-
 // ENDPOINT SEGURO: ENVIAR WHATSAPP DESDE APK
 app.post('/api/send-whatsapp', authenticateJWT, async (req, res) => {
   try {
@@ -574,7 +540,6 @@ app.post('/api/send-whatsapp', authenticateJWT, async (req, res) => {
     });
   }
 });
-
 // ENDPOINT SEGURO: ALERTAS DUALES DESDE APK
 app.post('/api/send-dual-alert', authenticateJWT, async (req, res) => {
   try {
@@ -610,7 +575,6 @@ app.post('/api/send-dual-alert', authenticateJWT, async (req, res) => {
     });
   }
 });
-
 // ENDPOINT DE STATUS CON INFO JWT
 app.get('/api/status', (req, res) => {
   res.json({
@@ -635,7 +599,6 @@ app.get('/api/status', (req, res) => {
     ]
   });
 });
-
 // MANTENER TODOS TUS ENDPOINTS EXISTENTES
 // ENDPOINT PRINCIPAL - MANTIENE TODO + AGREGA ELIMINACIÓN (SIN CAMBIOS)
 // ENDPOINT PARA SINCRONIZAR GOOGLE SHEETS → SUPABASE
@@ -669,26 +632,98 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
     
-    // 🔧 MANEJAR SINCRONIZACIÓN DE CORREOS - CORREGIDO
+    // 🔧 MANEJAR SINCRONIZACIÓN DE CORREOS - CORREGIDO CON ROW_ID
     if (action === 'sync_emails') {
-      console.log(`📧 Sincronizando correos para usuario ${usuario}`);
+      console.log(`📧 Sincronizando correos para usuario ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
       
       const client = await createConnection();
       
       try {
-        // Actualizar correos en tabla cuentas
-        const result = await client.query(
-          'UPDATE cuentas SET direccion_de_correo_electronico = $1 WHERE id = $2 RETURNING *',
-          [correos, id]
+        // 1️⃣ OBTENER CORREOS ACTUALES del usuario
+        const currentEmailsResult = await client.query(`
+          SELECT ua.row_id, a.email_address, a.id as account_id
+          FROM user_accounts ua
+          JOIN accounts a ON ua.account_id = a.id
+          WHERE ua.user_id = $1
+          ORDER BY ua.row_id ASC
+        `, [id]);
+        
+        const currentEmails = currentEmailsResult.rows;
+        console.log(`📧 Correos actuales en BD: ${currentEmails.length}`);
+        
+        // 2️⃣ PROCESAR CADA CORREO NUEVO
+        const correosArray = Array.isArray(correos) ? correos : [correos];
+        let correosActualizados = 0;
+        let correosNuevos = 0;
+        
+        for (let i = 0; i < correosArray.length; i++) {
+          const correo = correosArray[i];
+          const rowId = i + 1; // row_id basado en posición
+          
+          console.log(`📧 Procesando correo ${rowId}: ${correo}`);
+          
+          // 3️⃣ BUSCAR SI YA EXISTE CUENTA CON ESE CORREO
+          let accountResult = await client.query(
+            'SELECT id FROM accounts WHERE email_address = $1',
+            [correo]
+          );
+          
+          let accountId;
+          if (accountResult.rows.length > 0) {
+            accountId = accountResult.rows[0].id;
+            console.log(`✅ Cuenta existente encontrada: ${accountId}`);
+          } else {
+            // 4️⃣ CREAR NUEVA CUENTA
+            const newAccountResult = await client.query(
+              'INSERT INTO accounts (email_address) VALUES ($1) RETURNING id',
+              [correo]
+            );
+            accountId = newAccountResult.rows[0].id;
+            console.log(`✅ Nueva cuenta creada: ${accountId}`);
+          }
+          
+          // 5️⃣ VERIFICAR SI YA EXISTE RELACIÓN USER_ACCOUNTS CON ESE ROW_ID
+          const existingRelationResult = await client.query(
+            'SELECT id FROM user_accounts WHERE user_id = $1 AND row_id = $2',
+            [id, rowId]
+          );
+          
+          if (existingRelationResult.rows.length > 0) {
+            // 6️⃣ ACTUALIZAR RELACIÓN EXISTENTE
+            await client.query(
+              'UPDATE user_accounts SET account_id = $1 WHERE user_id = $2 AND row_id = $3',
+              [accountId, id, rowId]
+            );
+            console.log(`🔄 Actualizada relación row_id ${rowId}: ${correo}`);
+            correosActualizados++;
+          } else {
+            // 7️⃣ CREAR NUEVA RELACIÓN
+            await client.query(
+              'INSERT INTO user_accounts (user_id, account_id, row_id) VALUES ($1, $2, $3)',
+              [id, accountId, rowId]
+            );
+            console.log(`✅ Nueva relación row_id ${rowId}: ${correo}`);
+            correosNuevos++;
+          }
+        }
+        
+        // 8️⃣ ELIMINAR CORREOS SOBRANTES (si había más correos antes)
+        const maxRowId = correosArray.length;
+        const deleteResult = await client.query(
+          'DELETE FROM user_accounts WHERE user_id = $1 AND row_id > $2',
+          [id, maxRowId]
         );
         
-        if (result.rowCount > 0) {
-          console.log(`✅ Correos actualizados para usuario ${usuario}`);
-          console.log('📧 Nuevos correos guardados:', correos);
-        } else {
-          console.log(`⚠️ No se encontró usuario con ID ${id} en tabla cuentas`);
+        if (deleteResult.rowCount > 0) {
+          console.log(`🗑️ Eliminadas ${deleteResult.rowCount} relaciones sobrantes`);
         }
+        
+        console.log(`✅ Sincronización completada para ${usuario}:`);
+        console.log(`   📧 Correos nuevos: ${correosNuevos}`);
+        console.log(`   🔄 Correos actualizados: ${correosActualizados}`);
+        console.log(`   🗑️ Relaciones eliminadas: ${deleteResult.rowCount}`);
+        
       } catch (updateError) {
         console.error('❌ Error actualizando correos:', updateError);
         throw updateError;
@@ -699,8 +734,11 @@ app.post('/sync-user', async (req, res) => {
       return res.json({
         status: 'emails_synced',
         usuario: usuario,
-        correos_actualizados: correos.length,
-        correos: correos
+        correos_procesados: correosArray.length,
+        correos_nuevos: correosNuevos,
+        correos_actualizados: correosActualizados,
+        correos: correosArray,
+        estructura: 'Relacional con row_id'
       });
     }
     
@@ -742,7 +780,6 @@ app.post('/sync-user', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 // ENDPOINT PARA LISTAR TODOS LOS USUARIOS
 // ESTE CÓDIGO ES EXACTO PARA TU TABLA
 app.get('/usuarios', async (req, res) => {
@@ -779,7 +816,6 @@ app.get('/usuarios', async (req, res) => {
     });
   }
 });
-
 // TUS ENDPOINTS EXISTENTES (MANTENIDOS)
 app.post('/login', async (req, res) => {
   console.log('📱 Login desde app:', req.body);
@@ -826,7 +862,6 @@ app.post('/login', async (req, res) => {
     });
   }
 });
-
 // ENDPOINT BUSCAR CORREOS (CON JWT)
 app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   console.log(`🔍 ${req.user.username} busca correos:`, req.body);
@@ -852,7 +887,6 @@ app.post('/buscar-correos', authenticateJWT, async (req, res) => {
     });
   }
 });
-
 // ENDPOINTS DE SEGURIDAD EXISTENTES (SIN CAMBIOS)
 app.post('/bloquear-usuario', async (req, res) => {
   try {
@@ -909,7 +943,6 @@ app.post('/bloquear-usuario', async (req, res) => {
     });
   }
 });
-
 app.post('/reactivar-usuario', async (req, res) => {
   try {
     const { id, usuario, accion, numeroWhatsApp } = req.body;
@@ -965,7 +998,6 @@ app.post('/reactivar-usuario', async (req, res) => {
     });
   }
 });
-
 // ENDPOINTS DE PRUEBA EXISTENTES (SIN CAMBIOS)
 app.post('/test-telegram', async (req, res) => {
   try {
@@ -991,7 +1023,6 @@ Servidor: Disney+ Security System`;
     });
   }
 });
-
 app.post('/test-whatsapp', async (req, res) => {
   try {
     const { numeroDestino, mensaje } = req.body;
@@ -1025,7 +1056,6 @@ Servidor: Disney+ Security System`;
     });
   }
 });
-
 app.get('/test-whatsapp-simple', async (req, res) => {
   try {
     const numeroTest = '51935121273';
@@ -1046,7 +1076,6 @@ app.get('/test-whatsapp-simple', async (req, res) => {
     });
   }
 });
-
 app.post('/test-dual', async (req, res) => {
   try {
     const { numeroWhatsApp, mensaje } = req.body;
@@ -1081,7 +1110,6 @@ app.post('/test-dual', async (req, res) => {
     });
   }
 });
-
 app.get('/', (req, res) => {
   res.json({ 
     mensaje: '🚀 Servidor JWT ULTRA SEGURO - SLIDING EXPIRATION ACTIVO',
@@ -1099,7 +1127,6 @@ app.get('/', (req, res) => {
     ]
   });
 });
-
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('🚀 ===============================================');
@@ -1124,7 +1151,6 @@ app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('POST /buscar-correos - Búsqueda Gmail segura');
   console.log('');
 });
-
 process.on('unhandledRejection', (err) => {
   console.error('❌ Error no manejado:', err);
 });
