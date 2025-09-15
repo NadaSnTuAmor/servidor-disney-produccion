@@ -647,7 +647,7 @@ app.post('/sync-user', async (req, res) => {
         // 1️⃣ OBTENER CORREOS ACTUALES SOLO DE ESTE USUARIO
         console.log(`🔍 Obteniendo correos actuales del usuario ${id}...`);
         const currentEmailsResult = await client.query(`
-          SELECT ua.row_id, a.email_address, a.id as account_id, ua.id as relation_id
+          SELECT ua.row_id, a.email_address, a.id as account_id
           FROM user_accounts ua
           JOIN accounts a ON ua.account_id = a.id
           WHERE ua.user_id = $1
