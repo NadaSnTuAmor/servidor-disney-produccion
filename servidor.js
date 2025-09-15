@@ -632,35 +632,27 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
     
-    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN ULTRA SEGURA
+    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN DEFINITIVA CORREGIDA
     if (action === 'sync_emails') {
-      console.log(`📧 Sincronizando correos para usuario ${usuario} (ID: ${id})`);
+      console.log(`📧 Iniciando sync_emails para ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
-      console.log('📧 Tipo de correos:', typeof correos);
       
       const client = await createConnection();
       
       try {
-        // ✅ DECLARACIÓN MUY EXPLÍCITA DE VARIABLES
-        let correosArray;
+        // ✅ DECLARACIÓN INMEDIATA Y EXPLÍCITA
+        let correosArray = [];
         
-        // Validación y conversión segura
-        if (typeof correos === 'undefined' || correos === null) {
-          correosArray = [];
-          console.log('📧 Correos undefined/null - inicializando array vacío');
-        } else if (Array.isArray(correos)) {
+        if (correos && Array.isArray(correos)) {
           correosArray = correos;
-          console.log('📧 Correos ya es array:', correosArray.length, 'elementos');
-        } else {
+        } else if (correos) {
           correosArray = [correos];
-          console.log('📧 Correos convertido a array:', correosArray);
         }
         
-        console.log('📧 ✅ correosArray declarado exitosamente:', correosArray);
-        console.log('📧 Total elementos a procesar:', correosArray.length);
+        console.log('📧 correosArray inicializado:', correosArray);
+        console.log('📧 Cantidad:', correosArray.length);
         
-        // 1️⃣ OBTENER CORREOS ACTUALES
-        console.log(`🔍 Consultando correos actuales del usuario ${id}...`);
+        // Obtener correos actuales
         const currentEmailsResult = await client.query(`
           SELECT ua.row_id, a.email_address, a.id as account_id
           FROM user_accounts ua
@@ -669,119 +661,79 @@ app.post('/sync-user', async (req, res) => {
           ORDER BY ua.row_id ASC
         `, [id]);
         
-        const currentEmails = currentEmailsResult.rows;
-        console.log(`📧 Correos actuales encontrados:`, currentEmails.length);
+        console.log(`📧 Correos actuales en BD: ${currentEmailsResult.rows.length}`);
         
         let correosNuevos = 0;
         let correosActualizados = 0;
-        let correosEliminados = 0;
         
-        // 2️⃣ PROCESAR CADA CORREO
+        // Procesar cada correo
         for (let i = 0; i < correosArray.length; i++) {
-          const correoNuevo = correosArray[i];
+          const correo = correosArray[i];
           const rowId = i + 1;
           
-          console.log(`📧 [${i+1}/${correosArray.length}] Procesando: ${correoNuevo}`);
+          console.log(`📧 Procesando [${i+1}/${correosArray.length}]: ${correo}`);
           
-          if (!correoNuevo || correoNuevo.trim() === '') {
-            console.log(`⚠️ Correo vacío en posición ${rowId}, saltando...`);
-            continue;
-          }
-          
-          // 3️⃣ BUSCAR/CREAR CUENTA
+          // Buscar/crear cuenta
           let accountResult = await client.query(
             'SELECT id FROM accounts WHERE email_address = $1',
-            [correoNuevo]
+            [correo]
           );
           
           let accountId;
           if (accountResult.rows.length > 0) {
             accountId = accountResult.rows[0].id;
-            console.log(`✅ Cuenta existe: ${accountId}`);
           } else {
-            try {
-              const newAccountResult = await client.query(
-                'INSERT INTO accounts (email_address) VALUES ($1) RETURNING id',
-                [correoNuevo]
-              );
-              accountId = newAccountResult.rows[0].id;
-              console.log(`✅ Cuenta creada: ${accountId}`);
-            } catch (insertError) {
-              if (insertError.code === '23505') {
-                const retryResult = await client.query(
-                  'SELECT id FROM accounts WHERE email_address = $1',
-                  [correoNuevo]
-                );
-                accountId = retryResult.rows[0].id;
-                console.log(`✅ Cuenta en reintento: ${accountId}`);
-              } else {
-                console.error('❌ Error creando cuenta:', insertError);
-                throw insertError;
-              }
-            }
+            const newAccount = await client.query(
+              'INSERT INTO accounts (email_address) VALUES ($1) RETURNING id',
+              [correo]
+            );
+            accountId = newAccount.rows[0].id;
           }
           
-          // 4️⃣ MANEJAR RELACIÓN USER_ACCOUNTS
+          // Manejar relación user_accounts
           const existingRelation = await client.query(
             'SELECT account_id FROM user_accounts WHERE user_id = $1 AND row_id = $2',
             [id, rowId]
           );
           
           if (existingRelation.rows.length > 0) {
-            const currentAccountId = existingRelation.rows[0].account_id;
-            if (currentAccountId !== accountId) {
+            if (existingRelation.rows[0].account_id !== accountId) {
               await client.query(
                 'UPDATE user_accounts SET account_id = $1 WHERE user_id = $2 AND row_id = $3',
                 [accountId, id, rowId]
               );
-              console.log(`🔄 Actualizado row_id ${rowId}: ${correoNuevo}`);
               correosActualizados++;
-            } else {
-              console.log(`➡️ Sin cambios row_id ${rowId}: ${correoNuevo}`);
             }
           } else {
             await client.query(
               'INSERT INTO user_accounts (user_id, account_id, row_id) VALUES ($1, $2, $3)',
               [id, accountId, rowId]
             );
-            console.log(`✅ Nuevo row_id ${rowId}: ${correoNuevo}`);
             correosNuevos++;
           }
         }
         
-        // 5️⃣ ELIMINAR SOBRANTES
+        // Eliminar sobrantes
         const deleteResult = await client.query(
           'DELETE FROM user_accounts WHERE user_id = $1 AND row_id > $2',
           [id, correosArray.length]
         );
-        correosEliminados = deleteResult.rowCount;
         
-        if (correosEliminados > 0) {
-          console.log(`🗑️ Eliminados ${correosEliminados} registros sobrantes`);
-        }
+        console.log(`✅ Completado para ${usuario}: ${correosNuevos} nuevos, ${correosActualizados} actualizados, ${deleteResult.rowCount} eliminados`);
         
-        console.log(`✅ Sincronización completada para ${usuario}:`);
-        console.log(`   📧 Nuevos: ${correosNuevos}`);
-        console.log(`   🔄 Actualizados: ${correosActualizados}`);
-        console.log(`   🗑️ Eliminados: ${correosEliminados}`);
+        return res.json({
+          status: 'emails_synced',
+          usuario: usuario,
+          correos_procesados: correosArray.length,
+          mensaje: 'FUNCIONANDO CORRECTAMENTE'
+        });
         
-      } catch (updateError) {
-        console.error('❌ Error detallado en sync_emails:', updateError);
-        console.error('❌ Stack trace:', updateError.stack);
-        throw updateError;
+      } catch (error) {
+        console.error('❌ Error en sync_emails:', error);
+        throw error;
       } finally {
         await client.end();
       }
-      
-      return res.json({
-        status: 'emails_synced',
-        usuario: usuario,
-        correos_procesados: correosArray ? correosArray.length : 0,
-        correos_nuevos: correosNuevos,
-        correos_actualizados: correosActualizados,
-        correos_eliminados: correosEliminados,
-        estructura: 'ULTRA SEGURO - Variables explícitas'
-      });
     }
     
     // SINCRONIZACIÓN NORMAL DE USUARIO
