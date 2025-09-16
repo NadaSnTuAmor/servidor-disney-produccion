@@ -632,7 +632,7 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
     
-    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN CON MANEJO DE CONFLICTOS
+    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN ULTRA SEGURA CON VERIFICACIONES
     if (action === 'sync_emails') {
       console.log(`📧 Iniciando sync_emails para ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
@@ -673,7 +673,7 @@ app.post('/sync-user', async (req, res) => {
           
           console.log(`📧 Procesando [${i+1}/${correosArray.length}]: ${correo}`);
           
-          // 🔧 BUSCAR/CREAR CUENTA - CON MANEJO DE CONFLICTOS
+          // 🔧 BUSCAR/CREAR CUENTA - CON MANEJO ULTRA SEGURO DE CONFLICTOS
           let accountResult = await client.query(
             'SELECT id FROM accounts WHERE email_address = $1',
             [correo]
@@ -696,8 +696,15 @@ app.post('/sync-user', async (req, res) => {
                   'SELECT id FROM accounts WHERE email_address = $1',
                   [correo]
                 );
-                accountId = retryResult.rows[0].id;
-                console.log(`🔄 Conflicto resuelto para ${correo}, usando ID: ${accountId}`);
+                
+                // ✅ VERIFICACIÓN ULTRA SEGURA ANTES DE ACCEDER
+                if (retryResult.rows.length > 0) {
+                  accountId = retryResult.rows[0].id;
+                  console.log(`🔄 Conflicto resuelto para ${correo}, usando ID: ${accountId}`);
+                } else {
+                  console.error(`❌ No se pudo encontrar cuenta para ${correo} después del reintento`);
+                  throw new Error(`Account not found for email: ${correo}`);
+                }
               } else {
                 throw insertError;
               }
@@ -1143,7 +1150,7 @@ app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('🛡️ ✅ SEGURIDAD: Credenciales protegidas con variables de entorno');
   console.log('🔄 ✅ AUTO-RENOVACIÓN: Token se extiende automáticamente con actividad');
   console.log('⏰ ✅ EXPIRACIÓN: 20 minutos de inactividad → logout automático');
-  console.log('👤 ✅ CONTROL ADMIN: Solo tú manejas usuarios y contraseñas');
+  console.log('👤 ✅ CONTROL ADMIN: Solo tú manejas usuarios y contraseñas por admin');
   console.log('📧 ✅ MANTIENE: Toda funcionalidad Disney+ existente');
   console.log('🚀 ===============================================');
   console.log('');
