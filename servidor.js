@@ -632,7 +632,7 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
     
-    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN CON ACTUALIZACIÓN REAL
+    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN CON LIMPIEZA DE HUÉRFANOS
     if (action === 'sync_emails') {
       console.log(`📧 Iniciando sync_emails para ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
@@ -781,10 +781,25 @@ app.post('/sync-user', async (req, res) => {
           [id, correosArray.length]
         );
         
+        console.log(`🗑️ Relaciones eliminadas: ${deleteResult.rowCount}`);
+        
+        // 🧹 NUEVA FUNCIONALIDAD: LIMPIEZA DE CUENTAS HUÉRFANAS
+        console.log('🧹 Iniciando limpieza de cuentas huérfanas...');
+        
+        const orphanCleanup = await client.query(`
+          DELETE FROM accounts 
+          WHERE NOT EXISTS (
+            SELECT 1 FROM user_accounts WHERE user_accounts.account_id = accounts.id
+          )
+        `);
+        
+        console.log(`🧹 Limpieza completada: ${orphanCleanup.rowCount} cuentas huérfanas eliminadas`);
+        
         console.log(`✅ SINCRONIZACIÓN COMPLETADA para ${usuario}:`);
         console.log(`   📊 ${correosNuevos} nuevos`);
         console.log(`   🔄 ${correosActualizados} actualizados`);
-        console.log(`   🗑️ ${deleteResult.rowCount} eliminados`);
+        console.log(`   🗑️ ${deleteResult.rowCount} relaciones eliminadas`);
+        console.log(`   🧹 ${orphanCleanup.rowCount} cuentas huérfanas eliminadas`);
         console.log(`   ✅ ${correosProcessados}/${correosArray.length} procesados exitosamente`);
         
         return res.json({
@@ -794,7 +809,8 @@ app.post('/sync-user', async (req, res) => {
           correos_nuevos: correosNuevos,
           correos_actualizados: correosActualizados,
           correos_eliminados: deleteResult.rowCount,
-          mensaje: 'SINCRONIZACIÓN CON ACTUALIZACIÓN REAL COMPLETADA'
+          cuentas_huerfanas_eliminadas: orphanCleanup.rowCount,
+          mensaje: 'SINCRONIZACIÓN CON LIMPIEZA COMPLETA EXITOSA'
         });
         
       } catch (error) {
@@ -1186,7 +1202,8 @@ app.get('/', (req, res) => {
       '✅ Mantiene toda funcionalidad Disney+ existente',
       '✅ Sistema DUAL - Admin + Cliente alertas',
       '✅ 🛡️ CREDENCIALES ULTRA SEGURAS',
-      '✅ 🔐 Autenticación de nivel empresarial'
+      '✅ 🔐 Autenticación de nivel empresarial',
+      '✅ 🧹 Limpieza automática de cuentas huérfanas'
     ]
   });
 });
@@ -1200,6 +1217,7 @@ app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('⏰ ✅ EXPIRACIÓN: 20 minutos de inactividad → logout automático');
   console.log('👤 ✅ CONTROL ADMIN: Solo tú manejas usuarios y contraseñas por admin');
   console.log('📧 ✅ MANTIENE: Toda funcionalidad Disney+ existente');
+  console.log('🧹 ✅ LIMPIEZA: Automática de cuentas huérfanas');
   console.log('🚀 ===============================================');
   console.log('');
   console.log('🔐 ENDPOINTS JWT:');
