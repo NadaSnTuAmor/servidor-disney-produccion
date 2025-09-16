@@ -632,7 +632,7 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
     
-    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN ULTRA SEGURA CON VERIFICACIONES
+    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN DEFINITIVAMENTE ROBUSTA
     if (action === 'sync_emails') {
       console.log(`📧 Iniciando sync_emails para ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
@@ -652,6 +652,39 @@ app.post('/sync-user', async (req, res) => {
         console.log('📧 correosArray inicializado:', correosArray);
         console.log('📧 Cantidad:', correosArray.length);
         
+        // 🔧 FUNCIÓN AUXILIAR PARA OBTENER/CREAR CUENTA DE MANERA ROBUSTA
+        async function getOrCreateAccount(email) {
+          try {
+            // Intentar insertar con ON CONFLICT DO NOTHING
+            const insertResult = await client.query(
+              'INSERT INTO accounts (email_address) VALUES ($1) ON CONFLICT (email_address) DO NOTHING RETURNING id',
+              [email]
+            );
+            
+            if (insertResult.rows.length > 0) {
+              // Email insertado exitosamente
+              console.log(`✅ Nueva cuenta creada para ${email}: ID ${insertResult.rows[0].id}`);
+              return insertResult.rows[0].id;
+            } else {
+              // Email ya existe, obtener su ID
+              const selectResult = await client.query(
+                'SELECT id FROM accounts WHERE email_address = $1',
+                [email]
+              );
+              
+              if (selectResult.rows.length > 0) {
+                console.log(`🔄 Cuenta existente encontrada para ${email}: ID ${selectResult.rows[0].id}`);
+                return selectResult.rows[0].id;
+              } else {
+                throw new Error(`No se pudo obtener ID para ${email}`);
+              }
+            }
+          } catch (error) {
+            console.error(`❌ Error crítico procesando ${email}:`, error);
+            throw error;
+          }
+        }
+        
         // Obtener correos actuales
         const currentEmailsResult = await client.query(`
           SELECT ua.row_id, a.email_address, a.id as account_id
@@ -665,6 +698,7 @@ app.post('/sync-user', async (req, res) => {
         
         let correosNuevos = 0;
         let correosActualizados = 0;
+        let correosProcessados = 0;
         
         // Procesar cada correo
         for (let i = 0; i < correosArray.length; i++) {
@@ -673,65 +707,41 @@ app.post('/sync-user', async (req, res) => {
           
           console.log(`📧 Procesando [${i+1}/${correosArray.length}]: ${correo}`);
           
-          // 🔧 BUSCAR/CREAR CUENTA - CON MANEJO ULTRA SEGURO DE CONFLICTOS
-          let accountResult = await client.query(
-            'SELECT id FROM accounts WHERE email_address = $1',
-            [correo]
-          );
-          
-          let accountId;
-          if (accountResult.rows.length > 0) {
-            accountId = accountResult.rows[0].id;
-          } else {
-            try {
-              const newAccount = await client.query(
-                'INSERT INTO accounts (email_address) VALUES ($1) RETURNING id',
-                [correo]
-              );
-              accountId = newAccount.rows[0].id;
-            } catch (insertError) {
-              if (insertError.code === '23505') {
-                // Conflicto de clave única - buscar nuevamente
-                const retryResult = await client.query(
-                  'SELECT id FROM accounts WHERE email_address = $1',
-                  [correo]
-                );
-                
-                // ✅ VERIFICACIÓN ULTRA SEGURA ANTES DE ACCEDER
-                if (retryResult.rows.length > 0) {
-                  accountId = retryResult.rows[0].id;
-                  console.log(`🔄 Conflicto resuelto para ${correo}, usando ID: ${accountId}`);
-                } else {
-                  console.warn(`⚠️ Cuenta para ${correo} no encontrada después del reintento. Saltando este email.`);
-				  console.log(`🔄 Continuando con el siguiente email...`);
-                  continue; // Saltar este email y continuar con el siguiente
-                }
-              } else {
-                throw insertError;
-              }
-            }
-          }
-          
-          // Manejar relación user_accounts
-          const existingRelation = await client.query(
-            'SELECT account_id FROM user_accounts WHERE user_id = $1 AND row_id = $2',
-            [id, rowId]
-          );
-          
-          if (existingRelation.rows.length > 0) {
-            if (existingRelation.rows[0].account_id !== accountId) {
-              await client.query(
-                'UPDATE user_accounts SET account_id = $1 WHERE user_id = $2 AND row_id = $3',
-                [accountId, id, rowId]
-              );
-              correosActualizados++;
-            }
-          } else {
-            await client.query(
-              'INSERT INTO user_accounts (user_id, account_id, row_id) VALUES ($1, $2, $3)',
-              [id, accountId, rowId]
+          try {
+            // 🔧 USAR LA FUNCIÓN ROBUSTA PARA OBTENER/CREAR CUENTA
+            const accountId = await getOrCreateAccount(correo);
+            console.log(`✅ Account ID obtenido para ${correo}: ${accountId}`);
+            
+            // Manejar relación user_accounts
+            const existingRelation = await client.query(
+              'SELECT account_id FROM user_accounts WHERE user_id = $1 AND row_id = $2',
+              [id, rowId]
             );
-            correosNuevos++;
+            
+            if (existingRelation.rows.length > 0) {
+              if (existingRelation.rows[0].account_id !== accountId) {
+                await client.query(
+                  'UPDATE user_accounts SET account_id = $1 WHERE user_id = $2 AND row_id = $3',
+                  [accountId, id, rowId]
+                );
+                console.log(`🔄 Actualizada relación row_id ${rowId}: ${correo}`);
+                correosActualizados++;
+              }
+            } else {
+              await client.query(
+                'INSERT INTO user_accounts (user_id, account_id, row_id) VALUES ($1, $2, $3)',
+                [id, accountId, rowId]
+              );
+              console.log(`✅ Nueva relación row_id ${rowId}: ${correo}`);
+              correosNuevos++;
+            }
+            
+            correosProcessados++;
+          } catch (error) {
+            console.error(`❌ Error procesando ${correo}:`, error);
+            console.log(`⚠️ Saltando ${correo} y continuando...`);
+            // Continuar con el siguiente email sin fallar toda la sincronización
+            continue;
           }
         }
         
@@ -742,12 +752,16 @@ app.post('/sync-user', async (req, res) => {
         );
         
         console.log(`✅ Completado para ${usuario}: ${correosNuevos} nuevos, ${correosActualizados} actualizados, ${deleteResult.rowCount} eliminados`);
+        console.log(`📊 Total procesados exitosamente: ${correosProcessados}/${correosArray.length}`);
         
         return res.json({
           status: 'emails_synced',
           usuario: usuario,
-          correos_procesados: correosArray.length,
-          mensaje: 'FUNCIONANDO CORRECTAMENTE'
+          correos_procesados: correosProcessados,
+          correos_nuevos: correosNuevos,
+          correos_actualizados: correosActualizados,
+          correos_eliminados: deleteResult.rowCount,
+          mensaje: 'SINCRONIZACIÓN ROBUSTA COMPLETADA'
         });
         
       } catch (error) {
@@ -1165,8 +1179,4 @@ app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('POST /api/send-whatsapp - WhatsApp seguro');
   console.log('POST /api/send-dual-alert - Alertas duales seguras');
   console.log('POST /buscar-correos - Búsqueda Gmail segura');
-  console.log('');
-});
-process.on('unhandledRejection', (err) => {
-  console.error('❌ Error no manejado:', err);
-});
+  console.log('
