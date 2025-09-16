@@ -702,8 +702,9 @@ app.post('/sync-user', async (req, res) => {
                   accountId = retryResult.rows[0].id;
                   console.log(`🔄 Conflicto resuelto para ${correo}, usando ID: ${accountId}`);
                 } else {
-                  console.error(`❌ No se pudo encontrar cuenta para ${correo} después del reintento`);
-                  throw new Error(`Account not found for email: ${correo}`);
+                  console.warn(`⚠️ Cuenta para ${correo} no encontrada después del reintento. Saltando este email.`);
+				  console.log(`🔄 Continuando con el siguiente email...`);
+                  continue; // Saltar este email y continuar con el siguiente
                 }
               } else {
                 throw insertError;
