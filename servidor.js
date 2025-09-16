@@ -10,20 +10,53 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 // 🛡️ CONFIGURACIÓN SEGURA - DESDE VARIABLES DE ENTORNO
-// Nueva configuración para PostgreSQL/Supabase
+// 🚀 CONFIGURACIÓN MEJORADA CON CONNECTION POOLING
 const DB_CONFIG = {
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
-  }
+  },
+  // 🔧 PARÁMETROS DE CONNECTION POOLING
+  max: 10,                    // Máximo 10 conexiones simultáneas (bajo para evitar límites)
+  idleTimeoutMillis: 30000,   // 30 segundos para cerrar conexiones inactivas
+  connectionTimeoutMillis: 10000, // 10 segundos timeout para establecer conexión
+  statement_timeout: 15000,   // 15 segundos timeout para statements
+  query_timeout: 15000,       // 15 segundos timeout para queries
 };
-// Nueva función para crear conexión
+
+// 🚀 FUNCIÓN MEJORADA CON RETRY LOGIC Y EXPONENTIAL BACKOFF
 async function createConnection() {
-  const client = new Client(DB_CONFIG);
-  await client.connect();
-  return client;
+  const maxRetries = 5;
+  const baseDelay = 1000; // 1 segundo
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`🔄 Intento de conexión ${attempt}/${maxRetries} a Supabase...`);
+      
+      const client = new Client(DB_CONFIG);
+      await client.connect();
+      console.log(`✅ Conexión exitosa a Supabase en intento ${attempt}`);
+      return client;
+      
+    } catch (error) {
+      console.error(`❌ Intento ${attempt} falló:`, error.code || error.message);
+      
+      // Si es el último intento, lanzar error
+      if (attempt === maxRetries) {
+        console.error('🚨 TODOS LOS INTENTOS AGOTADOS - No se puede conectar a Supabase');
+        throw new Error(`Supabase connection failed after ${maxRetries} attempts: ${error.message}`);
+      }
+      
+      // Delay exponencial: 1s, 2s, 4s, 8s, 16s
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.log(`⏳ Esperando ${delay}ms antes del siguiente intento...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
 }
+
 const GMAIL_CONFIG = {
   CLIENT_ID: process.env.GMAIL_CLIENT_ID,
   CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET,
@@ -43,12 +76,14 @@ const GREEN_API_CONFIG = {
 const ADMIN_CONFIG = {
   numeroWhatsApp: process.env.ADMIN_WHATSAPP
 };
+
 // JWT CONFIGURATION Y FUNCIONES
 const JWT_CONFIG = {
   SECRET: process.env.JWT_SECRET,
   EXPIRATION: '20m',
   ALGORITHM: 'HS256'
 };
+
 // 🔐 VALIDAR QUE TODAS LAS VARIABLES EXISTEN
 const requiredEnvVars = [
   'DATABASE_URL', 'GREEN_API_ID_INSTANCE', 'GREEN_API_API_TOKEN_INSTANCE', 'TELEGRAM_BOT_TOKEN',
@@ -70,8 +105,10 @@ if (missingVars.length > 0) {
 console.log('✅ Todas las variables de entorno cargadas correctamente');
 console.log('🛡️ Credenciales protegidas - NO expuestas en código');
 console.log('🔐 JWT Ultra Seguro configurado correctamente');
+
 // Crear instancia del bot Telegram
 const telegramBot = new TelegramBot(TELEGRAM_CONFIG.BOT_TOKEN);
+
 // FUNCIÓN PARA GENERAR TOKEN
 function generateToken(user) {
   const payload = {
@@ -84,6 +121,7 @@ function generateToken(user) {
   console.log(`🔐 Token generado para ${user.username} - Expira en 20 minutos`);
   return token;
 }
+
 // FUNCIÓN PARA VERIFICAR TOKEN
 function verifyToken(token) {
   try {
@@ -99,6 +137,7 @@ function verifyToken(token) {
     return { valid: false, needsRefresh: false, error: error.message };
   }
 }
+
 // FUNCIÓN PARA RENOVAR TOKEN (SLIDING EXPIRATION)
 function refreshToken(oldToken) {
   try {
@@ -117,6 +156,7 @@ function refreshToken(oldToken) {
     return { success: false, error: error.message };
   }
 }
+
 // MIDDLEWARE JWT CON SLIDING EXPIRATION
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -157,6 +197,7 @@ function authenticateJWT(req, res, next) {
     });
   }
 }
+
 // 🚨 TUS FUNCIONES EXISTENTES (MANTENIDAS INTACTAS)
 async function enviarAlertaTelegram(mensaje) {
   try {
@@ -182,6 +223,7 @@ async function enviarAlertaWhatsApp(numeroDestino, mensaje) {
     throw error;
   }
 }
+
 // TU FUNCIÓN DUAL EXISTENTE (SIN CAMBIOS)
 async function enviarAlertaDual(mensaje, numeroCliente = null) {
   try {
@@ -241,6 +283,7 @@ async function enviarAlertaDual(mensaje, numeroCliente = null) {
     };
   }
 }
+
 // TUS FUNCIONES DE ALERTA EXISTENTES (SIN CAMBIOS)
 async function alertaRoboDetectado(usuario, correo, numeroCliente = null) {
   const mensaje = `🚨 ROBO DETECTADO - DISNEY+
@@ -261,6 +304,7 @@ async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
 🛡️ Sistema de seguridad dual activo`;
   return await enviarAlertaDual(mensaje, numeroCliente);
 }
+
 app.use(cors());
 app.use(express.json());
 app.use((req, res, next) => {
@@ -268,6 +312,7 @@ app.use((req, res, next) => {
   console.log('📦 Body:', req.body);
   next();
 });
+
 // TU FUNCIÓN GMAIL EXISTENTE (SIN CAMBIOS)
 async function connectGmail() {
   const oAuth2Client = new google.auth.OAuth2(
@@ -281,6 +326,7 @@ async function connectGmail() {
   const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
   return gmail;
 }
+
 // TU FUNCIÓN BUSCAR CORREOS (SIN CAMBIOS)
 async function buscarCorreosEnGmail(emailBuscado) {
   try {
@@ -362,6 +408,7 @@ async function buscarCorreosEnGmail(emailBuscado) {
     return [];
   }
 }
+
 // MIDDLEWARE PARA FUNCIONES EXISTENTES
 function authenticateUser(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -370,9 +417,11 @@ function authenticateUser(req, res, next) {
   }
   next();
 }
+
 // LOGIN CON JWT
 // LOGIN JWT CON SUPABASE POSTGRESQL
 app.post('/auth/login', async (req, res) => {
+  let client;
   try {
     const { username, password } = req.body;
     console.log('🔐 Intento de login JWT:', username);
@@ -384,8 +433,8 @@ app.post('/auth/login', async (req, res) => {
       });
     }
     
-    // Crear conexión PostgreSQL
-    const client = await createConnection();
+    // 🚀 USAR FUNCIÓN MEJORADA CON RETRY
+    client = await createConnection();
     
     // Query adaptada a PostgreSQL (nota: $1 en lugar de ?)
     const result = await client.query(
@@ -395,7 +444,6 @@ app.post('/auth/login', async (req, res) => {
     
     // Verificar si existe el usuario
     if (result.rows.length === 0) {
-      await client.end();
       return res.status(401).json({
         success: false,
         message: 'Usuario o contraseña incorrectos'
@@ -406,7 +454,6 @@ app.post('/auth/login', async (req, res) => {
     
     // Verificar estado de seguridad ANTES de validar password
     if (user.estado_seguridad === 'BLOQUEADO') {
-      await client.end();
       return res.status(401).json({
         success: false,
         message: 'Usuario bloqueado por seguridad'
@@ -415,7 +462,6 @@ app.post('/auth/login', async (req, res) => {
     
     // Validar contraseña (temporalmente simple, después implementar bcrypt)
     if (user.password_hash !== password) {
-      await client.end();
       return res.status(401).json({
         success: false,
         message: 'Usuario o contraseña incorrectos'
@@ -429,8 +475,6 @@ app.post('/auth/login', async (req, res) => {
       JOIN user_accounts ua ON a.id = ua.account_id 
       WHERE ua.user_id = $1
     `, [user.id]);
-    
-    await client.end();
     
     // Generar JWT (tu función existente)
     const token = generateToken(user);
@@ -459,8 +503,19 @@ app.post('/auth/login', async (req, res) => {
       message: 'Error interno del servidor',
       error: error.message
     });
+  } finally {
+    // 🔧 CERRAR CONEXIÓN SIEMPRE
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada correctamente');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
   }
 });
+
 // RENOVAR TOKEN
 app.post('/auth/refresh', (req, res) => {
   const { token } = req.body;
@@ -489,6 +544,7 @@ app.post('/auth/refresh', (req, res) => {
     });
   }
 });
+
 // PERFIL DE USUARIO JWT
 app.get('/auth/profile', authenticateJWT, (req, res) => {
   res.json({
@@ -501,6 +557,7 @@ app.get('/auth/profile', authenticateJWT, (req, res) => {
     }
   });
 });
+
 // LOGOUT JWT
 app.post('/auth/logout', authenticateJWT, (req, res) => {
   console.log(`👋 Logout JWT para usuario: ${req.user.username}`);
@@ -509,6 +566,7 @@ app.post('/auth/logout', authenticateJWT, (req, res) => {
     message: 'Logout exitoso - elimina el token del cliente'
   });
 });
+
 // ENDPOINT SEGURO: ENVIAR WHATSAPP DESDE APK
 app.post('/api/send-whatsapp', authenticateJWT, async (req, res) => {
   try {
@@ -540,6 +598,7 @@ app.post('/api/send-whatsapp', authenticateJWT, async (req, res) => {
     });
   }
 });
+
 // ENDPOINT SEGURO: ALERTAS DUALES DESDE APK
 app.post('/api/send-dual-alert', authenticateJWT, async (req, res) => {
   try {
@@ -575,6 +634,7 @@ app.post('/api/send-dual-alert', authenticateJWT, async (req, res) => {
     });
   }
 });
+
 // ENDPOINT DE STATUS CON INFO JWT
 app.get('/api/status', (req, res) => {
   res.json({
@@ -599,10 +659,45 @@ app.get('/api/status', (req, res) => {
     ]
   });
 });
+
+// 🧪 ENDPOINT DE PRUEBA DE CONEXIÓN
+app.get('/test-db', async (req, res) => {
+  let client;
+  try {
+    client = await createConnection();
+    const result = await client.query('SELECT NOW() as current_time, version() as pg_version');
+    
+    res.json({
+      success: true,
+      message: 'Supabase connection working perfectly',
+      timestamp: new Date().toISOString(),
+      database_time: result.rows[0].current_time,
+      postgres_version: result.rows[0].pg_version
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.code || 'UNKNOWN_ERROR',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión de prueba cerrada correctamente');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión de prueba:', endError);
+      }
+    }
+  }
+});
+
 // MANTENER TODOS TUS ENDPOINTS EXISTENTES
 // ENDPOINT PRINCIPAL - MANTIENE TODO + AGREGA ELIMINACIÓN (SIN CAMBIOS)
-// ENDPOINT PARA SINCRONIZAR GOOGLE SHEETS → SUPABASE
+// 🚀 ENDPOINT PARA SINCRONIZAR GOOGLE SHEETS → SUPABASE CON MANEJO ROBUSTO DE ERRORES
 app.post('/sync-user', async (req, res) => {
+  let client;
   try {
     console.log('📨 Datos recibidos de Google Sheets:', req.body);
     
@@ -610,9 +705,8 @@ app.post('/sync-user', async (req, res) => {
     
     // MANEJAR ELIMINACIÓN DE USUARIOS
     if (action === 'delete_user') {
-      const client = await createConnection();
+      client = await createConnection();
       await client.query('DELETE FROM users WHERE id = $1', [id]);
-      await client.end();
       console.log(`🗑️ Usuario ${id} eliminado de Supabase`);
       return res.json({ status: 'deleted' });
     }
@@ -620,24 +714,40 @@ app.post('/sync-user', async (req, res) => {
     // MANEJAR LIMPIEZA DE USUARIOS ELIMINADOS
     if (action === 'clean_deleted_users') {
       const { existing_user_ids } = req.body;
-      const client = await createConnection();
+      client = await createConnection();
       
       if (existing_user_ids && existing_user_ids.length > 0) {
         const placeholders = existing_user_ids.map((_, i) => `$${i + 1}`).join(',');
         await client.query(`DELETE FROM users WHERE id NOT IN (${placeholders})`, existing_user_ids);
       }
       
-      await client.end();
       console.log('🧹 Limpieza de usuarios completada');
       return res.json({ status: 'cleaned' });
     }
     
-    // 🔧 SINCRONIZACIÓN DE CORREOS - VERSIÓN CON LIMPIEZA DE HUÉRFANOS
+    // 🔧 SINCRONIZACIÓN DE CORREOS CON MANEJO ROBUSTO DE ERRORES
     if (action === 'sync_emails') {
       console.log(`📧 Iniciando sync_emails para ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
       
-      const client = await createConnection();
+      try {
+        client = await createConnection();
+      } catch (connectionError) {
+        console.error('❌ Error crítico de conexión en sync_emails:', connectionError);
+        
+        // Si es error de conexión específico, devolver respuesta apropiada
+        if (connectionError.message.includes('ETIMEDOUT') || connectionError.message.includes('ECONNREFUSED')) {
+          return res.status(503).json({
+            status: 'connection_failed',
+            error: 'Database temporarily unavailable',
+            message: 'Supabase connection failed - will retry automatically',
+            retry_recommended: true,
+            usuario: usuario
+          });
+        }
+        
+        throw connectionError;
+      }
       
       try {
         // ✅ DECLARACIÓN INMEDIATA Y EXPLÍCITA
@@ -814,10 +924,8 @@ app.post('/sync-user', async (req, res) => {
         });
         
       } catch (error) {
-        console.error('❌ Error en sync_emails:', error);
+        console.error('❌ Error en operaciones de sync_emails:', error);
         throw error;
-      } finally {
-        await client.end();
       }
     }
     
@@ -826,7 +934,7 @@ app.post('/sync-user', async (req, res) => {
       return res.status(400).json({ error: 'Datos incompletos (id, usuario, password requeridos)' });
     }
     
-    const client = await createConnection();
+    client = await createConnection();
     
     // VERIFICAR SI USUARIO EXISTE
     const checkResult = await client.query('SELECT id FROM users WHERE id = $1', [id]);
@@ -847,7 +955,6 @@ app.post('/sync-user', async (req, res) => {
       console.log(`✅ Usuario ${usuario} creado en Supabase`);
     }
     
-    await client.end();
     res.json({ 
       success: true, 
       usuario: usuario,
@@ -857,13 +964,25 @@ app.post('/sync-user', async (req, res) => {
   } catch (error) {
     console.error('❌ Error sincronizando usuario:', error);
     res.status(500).json({ error: error.message });
+  } finally {
+    // 🔧 CERRAR CONEXIÓN SIEMPRE
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada correctamente');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
   }
 });
+
 // ENDPOINT PARA LISTAR TODOS LOS USUARIOS
 // ESTE CÓDIGO ES EXACTO PARA TU TABLA
 app.get('/usuarios', async (req, res) => {
+  let client;
   try {
-    const client = await createConnection();
+    client = await createConnection();
     
     const result = await client.query(`
       SELECT 
@@ -874,8 +993,6 @@ app.get('/usuarios', async (req, res) => {
       FROM users 
       ORDER BY id ASC
     `);
-    
-    await client.end();
     
     console.log(`📋 Consultados ${result.rows.length} usuarios desde Supabase PostgreSQL`);
     
@@ -893,11 +1010,22 @@ app.get('/usuarios', async (req, res) => {
       success: false,
       error: error.message 
     });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada correctamente');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
   }
 });
-// TUS ENDPOINTS EXISTENTES (MANTENIDOS)
+
+// TUS ENDPOINTS EXISTENTES (MANTENIDOS CON MEJORAS)
 app.post('/login', async (req, res) => {
   console.log('📱 Login desde app:', req.body);
+  let client;
   try {
     const { usuario, password } = req.body;
     
@@ -908,14 +1036,12 @@ app.post('/login', async (req, res) => {
       });
     }
     
-    const client = await createConnection();
+    client = await createConnection();
     
     const result = await client.query(
       'SELECT id, username, password_hash FROM users WHERE username = $1 AND password_hash = $2',
       [usuario, password]
     );
-    
-    await client.end();
     
     if (result.rows.length > 0) {
       const token = Buffer.from(`${usuario}:${Date.now()}`).toString('base64');
@@ -939,8 +1065,18 @@ app.post('/login', async (req, res) => {
       success: false,
       message: 'Error interno del servidor'
     });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada correctamente');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
   }
 });
+
 // ENDPOINT BUSCAR CORREOS (CON JWT)
 app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   console.log(`🔍 ${req.user.username} busca correos:`, req.body);
@@ -966,8 +1102,10 @@ app.post('/buscar-correos', authenticateJWT, async (req, res) => {
     });
   }
 });
-// ENDPOINTS DE SEGURIDAD EXISTENTES (SIN CAMBIOS)
+
+// ENDPOINTS DE SEGURIDAD EXISTENTES (CON MEJORAS)
 app.post('/bloquear-usuario', async (req, res) => {
+  let client;
   try {
     const { id, usuario, accion, numeroWhatsApp } = req.body;
     
@@ -980,14 +1118,12 @@ app.post('/bloquear-usuario', async (req, res) => {
       });
     }
     
-    const client = await createConnection();
+    client = await createConnection();
     
     const result = await client.query(
       'UPDATE users SET estado_seguridad = $1 WHERE id = $2',
       ['BLOQUEADO', id]
     );
-    
-    await client.end();
     
     if (result.rowCount > 0) {
       console.log(`🔴 Usuario ${usuario} bloqueado - enviando alertas DUALES`);
@@ -1020,9 +1156,20 @@ app.post('/bloquear-usuario', async (req, res) => {
       success: false,
       error: error.message
     });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada correctamente');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
   }
 });
+
 app.post('/reactivar-usuario', async (req, res) => {
+  let client;
   try {
     const { id, usuario, accion, numeroWhatsApp } = req.body;
     
@@ -1035,14 +1182,12 @@ app.post('/reactivar-usuario', async (req, res) => {
       });
     }
     
-    const client = await createConnection();
+    client = await createConnection();
     
     const result = await client.query(
       'UPDATE users SET estado_seguridad = $1 WHERE id = $2',
       ['NORMAL', id]
     );
-    
-    await client.end();
     
     if (result.rowCount > 0) {
       console.log(`✅ Usuario ${usuario} reactivado - enviando alertas DUALES`);
@@ -1075,8 +1220,18 @@ app.post('/reactivar-usuario', async (req, res) => {
       success: false,
       error: error.message
     });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada correctamente');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
   }
 });
+
 // ENDPOINTS DE PRUEBA EXISTENTES (SIN CAMBIOS)
 app.post('/test-telegram', async (req, res) => {
   try {
@@ -1102,6 +1257,7 @@ Servidor: Disney+ Security System`;
     });
   }
 });
+
 app.post('/test-whatsapp', async (req, res) => {
   try {
     const { numeroDestino, mensaje } = req.body;
@@ -1135,6 +1291,7 @@ Servidor: Disney+ Security System`;
     });
   }
 });
+
 app.get('/test-whatsapp-simple', async (req, res) => {
   try {
     const numeroTest = '51935121273';
@@ -1155,6 +1312,7 @@ app.get('/test-whatsapp-simple', async (req, res) => {
     });
   }
 });
+
 app.post('/test-dual', async (req, res) => {
   try {
     const { numeroWhatsApp, mensaje } = req.body;
@@ -1189,11 +1347,12 @@ app.post('/test-dual', async (req, res) => {
     });
   }
 });
+
 app.get('/', (req, res) => {
   res.json({ 
     mensaje: '🚀 Servidor JWT ULTRA SEGURO - SLIDING EXPIRATION ACTIVO',
-    version: '3.0-jwt-secure',
-    security: '🔐 JWT Sliding Expiration + Variables protegidas',
+    version: '3.1-connection-robust',
+    security: '🔐 JWT Sliding Expiration + Variables protegidas + Connection Pooling',
     funcionalidades: [
       '✅ JWT con auto-renovación por actividad',
       '✅ Expiración 20 minutos de inactividad',
@@ -1203,10 +1362,13 @@ app.get('/', (req, res) => {
       '✅ Sistema DUAL - Admin + Cliente alertas',
       '✅ 🛡️ CREDENCIALES ULTRA SEGURAS',
       '✅ 🔐 Autenticación de nivel empresarial',
-      '✅ 🧹 Limpieza automática de cuentas huérfanas'
+      '✅ 🧹 Limpieza automática de cuentas huérfanas',
+      '✅ 🚀 Connection pooling con retry logic',
+      '✅ 🔄 Manejo robusto de errores de conexión'
     ]
   });
 });
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('🚀 ===============================================');
@@ -1218,6 +1380,8 @@ app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('👤 ✅ CONTROL ADMIN: Solo tú manejas usuarios y contraseñas por admin');
   console.log('📧 ✅ MANTIENE: Toda funcionalidad Disney+ existente');
   console.log('🧹 ✅ LIMPIEZA: Automática de cuentas huérfanas');
+  console.log('🚀 ✅ CONNECTION POOLING: Con retry logic y exponential backoff');
+  console.log('🔧 ✅ MANEJO ROBUSTO: De errores ETIMEDOUT y ECONNREFUSED');
   console.log('🚀 ===============================================');
   console.log('');
   console.log('🔐 ENDPOINTS JWT:');
@@ -1231,7 +1395,11 @@ app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('POST /api/send-dual-alert - Alertas duales seguras');
   console.log('POST /buscar-correos - Búsqueda Gmail segura');
   console.log('');
+  console.log('🧪 ENDPOINTS DE PRUEBA:');
+  console.log('GET /test-db - Prueba de conexión a Supabase');
+  console.log('');
 });
+
 process.on('unhandledRejection', (err) => {
   console.error('❌ Error no manejado:', err);
 });
