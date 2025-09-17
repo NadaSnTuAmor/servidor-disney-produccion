@@ -10,6 +10,7 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 3000;
+const watchList = new Map();
 
 // 🛡️ CONFIGURACIÓN SEGURA - DESDE VARIABLES DE ENTORNO
 // 🚀 CONFIGURACIÓN MEJORADA CON CONNECTION POOLING
@@ -1080,20 +1081,24 @@ app.post('/login', async (req, res) => {
 // ENDPOINT BUSCAR CORREOS (CON JWT)
 app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   console.log(`🔍 ${req.user.username} busca correos:`, req.body);
+
   try {
     const { email_busqueda } = req.body;
-    
+
     const correosEncontrados = await buscarCorreosEnGmail(email_busqueda);
-    
+
     res.json({
       success: true,
-      emails: correosEncontrados,
-      total: correosEncontrados.length,
+      emails:  correosEncontrados,
+      total:   correosEncontrados.length,
       email_buscado: email_busqueda,
-      searched_by: req.user.username,
+      searched_by:   req.user.username,
       correo_principal_leido: CORREO_PRINCIPAL
     });
-    
+
+    /* ←———— REGISTRO EN LA LISTA DE VIGILANCIA ————→ */
+    watchList.set(email_busqueda.toLowerCase(), Date.now());
+
   } catch (error) {
     console.error('❌ Error buscando correos:', error);
     res.status(500).json({
@@ -1368,6 +1373,48 @@ app.get('/', (req, res) => {
     ]
   });
 });
+
+/* ───────── TIMELINE DE VIGILANCIA ─────────
+   Revisa cada 30 s todos los correos guardados en watchList.
+   • Si llevan >5 min sin “Cuenta actualizada”, deja de vigilarlos.
+   • Si encuentra el correo “Cuenta de MyDisney actualizada”
+     con la cadena codificada, bloquea al usuario y dispara alertas.
+*/
+setInterval(async () => {
+  const ahora = Date.now();
+
+  for (const [email, visto] of watchList.entries()) {
+    // 1) Fuera de la ventana de 5 min → se descarta
+    if (ahora - visto > 5 * 60 * 1_000) {
+      watchList.delete(email);
+      console.log('⏰ Fin de vigilancia (5 min) ->', email);
+      continue;
+    }
+
+    try {
+      // 2) Trae SOLO los 3 mensajes más recientes de ese inbox
+      const correos = await buscarCorreosEnGmail(email, 3); // adapta tu función si usa tamaño fijo
+
+      // 3) ¿Existe el mail de “Cuenta actualizada”?
+      const alerta = correos.find(m =>
+        m.subject === 'Cuenta de MyDisney actualizada' &&
+        m.body?.includes('Correo electr=C3=B3nico de MyDisney actua=lizado')
+      );
+
+      if (!alerta) continue; // nada sospechoso todavía
+
+      // 4) Coincidencia -> bloquear en Supabase y alertar
+      await bloquearUsuarioPorCorreo(email);        // tu helper de BD
+      await alertaRoboDetectado(email, alerta.date) // tu doble alerta
+
+      watchList.delete(email); // deja de vigilar; ya actuó
+      console.log('🚨 Usuario bloqueado tras detección ->', email);
+
+    } catch (err) {
+      console.error('⚠️ Error en vigilancia de', email, err.message);
+    }
+  }
+}, 30_000); // cada 30 segundos
 
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
