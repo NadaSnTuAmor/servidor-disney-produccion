@@ -371,9 +371,8 @@ async function buscarCorreosEnGmail(emailBuscado) {
               body = Buffer.from(part.body.data, 'base64').toString('utf-8');
               break;
             } else if (part.mimeType === 'text/html' && part.body?.data) {
-              body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-              body = body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-              break;
+				body = Buffer.from(part.body.data, 'base64').toString('utf-8'); // ← HTML COMPLETO
+				break;
             }
           }
         }
@@ -392,7 +391,8 @@ async function buscarCorreosEnGmail(emailBuscado) {
           from: from,
           to: to,
           date: fechaFormateada,
-          body: body.substring(0, 300) + '...'
+          body: body, // HTML completo
+		  preview: body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 150) + '...' // Solo para preview
         });
         console.log(`✅ Procesado: ${subject} - ${fechaFormateada}`);
         
