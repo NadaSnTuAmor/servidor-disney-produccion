@@ -306,7 +306,12 @@ async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
   return await enviarAlertaDual(mensaje, numeroCliente);
 }
 
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+
 app.use(express.json());
 app.use((req, res, next) => {
   console.log(`🔍 ${req.method} ${req.path}`);
