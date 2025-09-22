@@ -1108,6 +1108,27 @@ app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   }
 });
 
+// Endpoint para obtener estado del watchList
+app.get('/api/watchlist', authenticateJWT, (req, res) => {
+  const currentTime = Date.now();
+  const activeWatches = [];
+  
+  for (const [email, timestamp] of watchList.entries()) {
+    activeWatches.push({
+      email: email,
+      startTime: timestamp,
+      elapsed: currentTime - timestamp,
+      remainingTime: Math.max(0, (5 * 60 * 1000) - (currentTime - timestamp))
+    });
+  }
+  
+  res.json({
+    success: true,
+    activeWatches: activeWatches,
+    total: activeWatches.length
+  });
+});
+
 // ENDPOINTS DE SEGURIDAD EXISTENTES (CON MEJORAS)
 app.post('/bloquear-usuario', async (req, res) => {
   let client;
