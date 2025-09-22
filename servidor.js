@@ -308,9 +308,10 @@ async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
 
 app.use(cors({
   origin: '*',
-  credentials: true,
-  optionsSuccessStatus: 200
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}))
 
 app.use(express.json());
 app.use((req, res, next) => {
