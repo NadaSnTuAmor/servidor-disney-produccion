@@ -438,7 +438,11 @@ function iniciarVigilanciaEmail(email) {
         // Verificar si hay correo de Disney+ con código
         const alertaDisney = correos.find(m =>
           m.subject === 'Cuenta de MyDisney actualizada' &&
-          m.body?.includes('Correo electr=C3=B3nico de MyDisney actua=')
+		  (
+		  m.body?.includes('Correo electr=C3=B3nico de MyDisney actua=') ||
+		  m.body?.includes('Correo electrónico de MyDisney actualizado') ||
+		  m.body?.includes('Se cambió el correo electrónico asociado')
+		  )
         );
         
         if (alertaDisney) {
