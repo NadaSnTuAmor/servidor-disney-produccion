@@ -10,7 +10,18 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 3000;
-const watchList = new Map();
+
+// 🎯 NUEVO SISTEMA DE VIGILANCIA INTELIGENTE
+const watchList = new Map(); // email -> { startTime, timers: [] }
+
+// 🕐 CONFIGURACIÓN DE REVISIONES ALEATORIAS
+const VIGILANCIA_REVISIONES = [
+  { minInicio: 2,  minFin: 3,  descripcion: "Código recién enviado" },
+  { minInicio: 5,  minFin: 6,  descripcion: "Usuario usando código" },  
+  { minInicio: 8,  minFin: 9,  descripcion: "Punto medio crítico" },
+  { minInicio: 11, minFin: 12, descripcion: "Últimos minutos útiles" },
+  { minInicio: 14, minFin: 15, descripcion: "ÚLTIMA OPORTUNIDAD" }
+];
 
 // 🛡️ CONFIGURACIÓN SEGURA - DESDE VARIABLES DE ENTORNO
 // 🚀 CONFIGURACIÓN MEJORADA CON CONNECTION POOLING
@@ -31,7 +42,6 @@ const DB_CONFIG = {
 async function createConnection() {
   const maxRetries = 5;
   const baseDelay = 1000; // 1 segundo
-  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`🔄 Intento de conexión ${attempt}/${maxRetries} a Supabase...`);
@@ -64,16 +74,20 @@ const GMAIL_CONFIG = {
   REDIRECT_URL: process.env.GMAIL_REDIRECT_URL || 'http://localhost:3000/oauth2callback',
   REFRESH_TOKEN: process.env.GMAIL_REFRESH_TOKEN
 };
+
 const CORREO_PRINCIPAL = process.env.CORREO_PRINCIPAL;
+
 const TELEGRAM_CONFIG = {
   BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
   YOUR_CHAT_ID: process.env.TELEGRAM_CHAT_ID
 };
+
 const GREEN_API_CONFIG = {
   idInstance: process.env.GREEN_API_ID_INSTANCE,
   apiTokenInstance: process.env.GREEN_API_API_TOKEN_INSTANCE,
   baseUrl: 'https://api.green-api.com'
 };
+
 const ADMIN_CONFIG = {
   numeroWhatsApp: process.env.ADMIN_WHATSAPP
 };
@@ -92,17 +106,20 @@ const requiredEnvVars = [
   'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN', 'CORREO_PRINCIPAL',
   'JWT_SECRET'
 ];
+
 let missingVars = [];
 requiredEnvVars.forEach(varName => {
   if (!process.env[varName]) {
     missingVars.push(varName);
   }
 });
+
 if (missingVars.length > 0) {
   console.error('❌ FALTAN VARIABLES DE ENTORNO:', missingVars);
   console.error('📝 Asegúrate de crear el archivo .env con todas las variables');
   process.exit(1);
 }
+
 console.log('✅ Todas las variables de entorno cargadas correctamente');
 console.log('🛡️ Credenciales protegidas - NO expuestas en código');
 console.log('🔐 JWT Ultra Seguro configurado correctamente');
@@ -208,6 +225,7 @@ async function enviarAlertaTelegram(mensaje) {
     console.error('❌ Error enviando alerta a Telegram:', error);
   }
 }
+
 async function enviarAlertaWhatsApp(numeroDestino, mensaje) {
   try {
     const url = `${GREEN_API_CONFIG.baseUrl}/waInstance${GREEN_API_CONFIG.idInstance}/sendMessage/${GREEN_API_CONFIG.apiTokenInstance}`;
@@ -296,6 +314,7 @@ async function alertaRoboDetectado(usuario, correo, numeroCliente = null) {
 🛡️ Sistema de seguridad dual activo`;
   return await enviarAlertaDual(mensaje, numeroCliente);
 }
+
 async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
   const mensaje = `✅ USUARIO REACTIVADO - DISNEY+
 👤 Usuario: ${usuario}
@@ -306,6 +325,164 @@ async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
   return await enviarAlertaDual(mensaje, numeroCliente);
 }
 
+// 🔴 FUNCIÓN PARA BLOQUEAR USUARIO POR EMAIL DETECTADO
+async function bloquearUsuarioPorCorreo(email) {
+  let client;
+  try {
+    console.log(`🔍 Buscando usuario propietario del email: ${email}`);
+    
+    // Conectar a Supabase
+    client = await createConnection();
+    
+    // Buscar qué usuario(s) tienen este email y bloquearlos
+    const result = await client.query(`
+      UPDATE users 
+      SET estado_seguridad = 'BLOQUEADO' 
+      WHERE id IN (
+        SELECT DISTINCT ua.user_id 
+        FROM user_accounts ua
+        JOIN accounts a ON ua.account_id = a.id 
+        WHERE a.email_address = $1
+      )
+      RETURNING id, username
+    `, [email.toLowerCase()]);
+    
+    if (result.rows.length > 0) {
+      // Usuario(s) encontrado(s) y bloqueado(s)
+      for (const user of result.rows) {
+        console.log(`🔴 USUARIO BLOQUEADO: ID=${user.id}, Username=${user.username}, Email=${email}`);
+      }
+      
+      return {
+        success: true,
+        usuariosBloqueados: result.rows,
+        mensaje: `${result.rows.length} usuario(s) bloqueado(s) por email comprometido`
+      };
+    } else {
+      // No se encontró usuario con ese email
+      console.log(`⚠️ No se encontró usuario propietario del email: ${email}`);
+      
+      return {
+        success: false,
+        mensaje: `No se encontró usuario asociado al email: ${email}`
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ Error bloqueando usuario por email:', error);
+    throw error;
+  } finally {
+    // Cerrar conexión siempre
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada en bloquearUsuarioPorCorreo');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión en bloquearUsuarioPorCorreo:', endError);
+      }
+    }
+  }
+}
+
+// 🎯 NUEVO SISTEMA DE VIGILANCIA INTELIGENTE CON 5 REVISIONES ALEATORIAS
+
+// Función para generar tiempo aleatorio dentro de un rango
+function generarTiempoAleatorio(minInicio, minFin) {
+  const randomMinutos = Math.random() * (minFin - minInicio) + minInicio;
+  return randomMinutos * 60 * 1000; // Convertir a millisegundos
+}
+
+// Función para cancelar timers de un email específico
+function cancelarVigilanciaEmail(email) {
+  const emailKey = email.toLowerCase();
+  if (watchList.has(emailKey)) {
+    const watchData = watchList.get(emailKey);
+    if (watchData.timers && watchData.timers.length > 0) {
+      watchData.timers.forEach(timer => {
+        clearTimeout(timer);
+      });
+      console.log(`🛑 Cancelados ${watchData.timers.length} timers para ${email}`);
+    }
+    watchList.delete(emailKey);
+  }
+}
+
+// Función principal para iniciar vigilancia de un email
+function iniciarVigilanciaEmail(email) {
+  const emailKey = email.toLowerCase();
+  
+  // Cancelar vigilancia anterior si existe
+  cancelarVigilanciaEmail(email);
+  
+  const startTime = Date.now();
+  const timers = [];
+  
+  console.log(`🎯 INICIANDO VIGILANCIA INTELIGENTE para: ${email}`);
+  console.log(`⏰ Duración total: 15 minutos`);
+  console.log(`🔍 Revisiones programadas: ${VIGILANCIA_REVISIONES.length}`);
+  
+  // Programar cada revisión
+  VIGILANCIA_REVISIONES.forEach((revision, index) => {
+    const tiempoEspera = generarTiempoAleatorio(revision.minInicio, revision.minFin);
+    const minutoReal = (tiempoEspera / (60 * 1000)).toFixed(1);
+    
+    console.log(`📅 Revisión ${index + 1}: ${revision.descripcion} - Programada para minuto ${minutoReal}`);
+    
+    const timer = setTimeout(async () => {
+      try {
+        console.log(`🔍 EJECUTANDO Revisión ${index + 1}/5 para ${email} (${revision.descripcion})`);
+        
+        // Buscar correos de Disney+
+        const correos = await buscarCorreosEnGmail(email);
+        
+        // Verificar si hay correo de Disney+ con código
+        const alertaDisney = correos.find(m =>
+          m.subject === 'Cuenta de MyDisney actualizada' &&
+          m.body?.includes('Correo electr=C3=B3nico de MyDisney actua=')
+        );
+        
+        if (alertaDisney) {
+          console.log(`🚨 ¡CÓDIGO DISNEY+ DETECTADO en ${email}!`);
+          
+          // Cancelar vigilancia restante
+          cancelarVigilanciaEmail(email);
+          
+          // Bloquear usuario
+          await bloquearUsuarioPorCorreo(email);
+          
+          // Enviar alertas
+          await alertaRoboDetectado(email, alertaDisney.date);
+          
+          console.log(`🔴 Usuario bloqueado automáticamente: ${email}`);
+        } else {
+          console.log(`✅ Revisión ${index + 1}: Sin alertas para ${email}`);
+        }
+        
+      } catch (error) {
+        console.error(`❌ Error en revisión ${index + 1} para ${email}:`, error.message);
+      }
+    }, tiempoEspera);
+    
+    timers.push(timer);
+  });
+  
+  // Timer para limpiar después de 15 minutos
+  const cleanupTimer = setTimeout(() => {
+    cancelarVigilanciaEmail(email);
+    console.log(`⏰ Vigilancia terminada para ${email} (15 minutos completados)`);
+  }, 15 * 60 * 1000); // 15 minutos
+  
+  timers.push(cleanupTimer);
+  
+  // Guardar en watchList
+  watchList.set(emailKey, {
+    startTime: startTime,
+    timers: timers
+  });
+  
+  console.log(`✅ Vigilancia configurada para ${email} - ${timers.length} timers activos`);
+}
+
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -314,6 +491,7 @@ app.use(cors({
 }))
 
 app.use(express.json());
+
 app.use((req, res, next) => {
   console.log(`🔍 ${req.method} ${req.path}`);
   console.log('📦 Body:', req.body);
@@ -648,8 +826,14 @@ app.get('/api/status', (req, res) => {
     success: true,
     message: 'Servidor JWT Ultra Seguro funcionando',
     timestamp: new Date().toISOString(),
-    version: '3.0-jwt-secure',
-    security: 'JWT Sliding Expiration - Variables protegidas con dotenv',
+    version: '3.1-vigilancia-inteligente',
+    security: 'JWT Sliding Expiration + Variables protegidas + Vigilancia 5 revisiones',
+    vigilancia: {
+      tipo: 'Vigilancia Inteligente Disney+',
+      revisiones: VIGILANCIA_REVISIONES.length,
+      duracion: '15 minutos',
+      aleatorio: 'Sí - timing impredecible'
+    },
     jwt_config: {
       expiration: '20 minutos',
       sliding: 'Auto-renovación con actividad',
@@ -1084,15 +1268,13 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// ENDPOINT BUSCAR CORREOS (CON JWT)
+// ENDPOINT BUSCAR CORREOS (CON JWT) - ACTUALIZADO CON VIGILANCIA INTELIGENTE
 app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   console.log(`🔍 ${req.user.username} busca correos:`, req.body);
-
   try {
     const { email_busqueda } = req.body;
-
     const correosEncontrados = await buscarCorreosEnGmail(email_busqueda);
-
+    
     res.json({
       success: true,
       emails:  correosEncontrados,
@@ -1101,10 +1283,11 @@ app.post('/buscar-correos', authenticateJWT, async (req, res) => {
       searched_by:   req.user.username,
       correo_principal_leido: CORREO_PRINCIPAL
     });
-
-    /* ←———— REGISTRO EN LA LISTA DE VIGILANCIA ————→ */
-    watchList.set(email_busqueda.toLowerCase(), Date.now());
-
+    
+    /* ←———— NUEVA VIGILANCIA INTELIGENTE ————→ */
+    console.log(`🎯 Iniciando vigilancia inteligente para: ${email_busqueda}`);
+    iniciarVigilanciaEmail(email_busqueda);
+    
   } catch (error) {
     console.error('❌ Error buscando correos:', error);
     res.status(500).json({
@@ -1114,24 +1297,32 @@ app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   }
 });
 
-// Endpoint para obtener estado del watchList
+// Endpoint para obtener estado del watchList - ACTUALIZADO
 app.get('/api/watchlist', authenticateJWT, (req, res) => {
   const currentTime = Date.now();
   const activeWatches = [];
   
-  for (const [email, timestamp] of watchList.entries()) {
+  for (const [email, watchData] of watchList.entries()) {
+    const elapsed = currentTime - watchData.startTime;
+    const remainingTime = Math.max(0, (15 * 60 * 1000) - elapsed); // 15 minutos
+    
     activeWatches.push({
       email: email,
-      startTime: timestamp,
-      elapsed: currentTime - timestamp,
-      remainingTime: Math.max(0, (5 * 60 * 1000) - (currentTime - timestamp))
+      startTime: watchData.startTime,
+      elapsed: elapsed,
+      remainingTime: remainingTime,
+      activeTimers: watchData.timers.length,
+      status: remainingTime > 0 ? 'VIGILANDO' : 'EXPIRADO'
     });
   }
   
   res.json({
     success: true,
+    sistema: 'Vigilancia Inteligente Disney+',
     activeWatches: activeWatches,
-    total: activeWatches.length
+    total: activeWatches.length,
+    revisiones_programadas: VIGILANCIA_REVISIONES.length,
+    duracion_vigilancia: '15 minutos'
   });
 });
 
@@ -1382,9 +1573,16 @@ app.post('/test-dual', async (req, res) => {
 
 app.get('/', (req, res) => {
   res.json({ 
-    mensaje: '🚀 Servidor JWT ULTRA SEGURO - SLIDING EXPIRATION ACTIVO',
-    version: '3.1-connection-robust',
-    security: '🔐 JWT Sliding Expiration + Variables protegidas + Connection Pooling',
+    mensaje: '🚀 Servidor JWT ULTRA SEGURO - VIGILANCIA INTELIGENTE DISNEY+',
+    version: '3.2-vigilancia-inteligente',
+    security: '🔐 JWT Sliding Expiration + Variables protegidas + Vigilancia Inteligente',
+    vigilancia: {
+      tipo: '🎯 Sistema de 5 Revisiones Aleatorias',
+      duracion: '15 minutos por email',
+      revisiones: VIGILANCIA_REVISIONES,
+      reset_automatico: 'Sí - si llega nuevo código',
+      deteccion: 'Disney+ "Cuenta de MyDisney actualizada"'
+    },
     funcionalidades: [
       '✅ JWT con auto-renovación por actividad',
       '✅ Expiración 20 minutos de inactividad',
@@ -1396,52 +1594,12 @@ app.get('/', (req, res) => {
       '✅ 🔐 Autenticación de nivel empresarial',
       '✅ 🧹 Limpieza automática de cuentas huérfanas',
       '✅ 🚀 Connection pooling con retry logic',
-      '✅ 🔄 Manejo robusto de errores de conexión'
+      '✅ 🔄 Manejo robusto de errores de conexión',
+      '✅ 🎯 VIGILANCIA INTELIGENTE Disney+ con 5 revisiones aleatorias',
+      '✅ ⏰ Reset automático si llega nuevo código'
     ]
   });
 });
-
-/* ───────── TIMELINE DE VIGILANCIA ─────────
-   Revisa cada 30 s todos los correos guardados en watchList.
-   • Si llevan >5 min sin “Cuenta actualizada”, deja de vigilarlos.
-   • Si encuentra el correo “Cuenta de MyDisney actualizada”
-     con la cadena codificada, bloquea al usuario y dispara alertas.
-*/
-setInterval(async () => {
-  const ahora = Date.now();
-
-  for (const [email, visto] of watchList.entries()) {
-    // 1) Fuera de la ventana de 5 min → se descarta
-    if (ahora - visto > 5 * 60 * 1_000) {
-      watchList.delete(email);
-      console.log('⏰ Fin de vigilancia (5 min) ->', email);
-      continue;
-    }
-
-    try {
-      // 2) Trae SOLO los 3 mensajes más recientes de ese inbox
-      const correos = await buscarCorreosEnGmail(email, 3); // adapta tu función si usa tamaño fijo
-
-      // 3) ¿Existe el mail de “Cuenta actualizada”?
-      const alerta = correos.find(m =>
-        m.subject === 'Cuenta de MyDisney actualizada' &&
-        m.body?.includes('Correo electr=C3=B3nico de MyDisney actua=lizado')
-      );
-
-      if (!alerta) continue; // nada sospechoso todavía
-
-      // 4) Coincidencia -> bloquear en Supabase y alertar
-      await bloquearUsuarioPorCorreo(email);        // tu helper de BD
-      await alertaRoboDetectado(email, alerta.date) // tu doble alerta
-
-      watchList.delete(email); // deja de vigilar; ya actuó
-      console.log('🚨 Usuario bloqueado tras detección ->', email);
-
-    } catch (err) {
-      console.error('⚠️ Error en vigilancia de', email, err.message);
-    }
-  }
-}, 30_000); // cada 30 segundos
 
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
@@ -1456,6 +1614,9 @@ app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('🧹 ✅ LIMPIEZA: Automática de cuentas huérfanas');
   console.log('🚀 ✅ CONNECTION POOLING: Con retry logic y exponential backoff');
   console.log('🔧 ✅ MANEJO ROBUSTO: De errores ETIMEDOUT y ECONNREFUSED');
+  console.log('🎯 ✅ VIGILANCIA INTELIGENTE: Disney+ con 5 revisiones aleatorias');
+  console.log('⏰ ✅ VIGILANCIA DURACIÓN: 15 minutos con reset automático');
+  console.log('🎲 ✅ TIMING ALEATORIO: Minuto 2-3, 5-6, 8-9, 11-12, 14-15');
   console.log('🚀 ===============================================');
   console.log('');
   console.log('🔐 ENDPOINTS JWT:');
@@ -1467,10 +1628,16 @@ app.listen(PORT, '0.0.0.0', () => { // ✅ AGREGADO '0.0.0.0' PARA RENDER
   console.log('🛡️ ENDPOINTS PROTEGIDOS:');
   console.log('POST /api/send-whatsapp - WhatsApp seguro');
   console.log('POST /api/send-dual-alert - Alertas duales seguras');
-  console.log('POST /buscar-correos - Búsqueda Gmail segura');
+  console.log('POST /buscar-correos - Búsqueda Gmail segura CON VIGILANCIA INTELIGENTE');
+  console.log('GET /api/watchlist - Lista de vigilancia activa');
   console.log('');
   console.log('🧪 ENDPOINTS DE PRUEBA:');
   console.log('GET /test-db - Prueba de conexión a Supabase');
+  console.log('');
+  console.log('🎯 VIGILANCIA DISNEY+ CONFIGURADA:');
+  VIGILANCIA_REVISIONES.forEach((rev, index) => {
+    console.log(`   ${index + 1}. Minuto ${rev.minInicio}-${rev.minFin}: ${rev.descripcion}`);
+  });
   console.log('');
 });
 
