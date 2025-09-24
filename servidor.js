@@ -1249,13 +1249,13 @@ app.post('/sync-user', async (req, res) => {
 
     if (checkResult.rows.length > 0) {
       await client.query(
-        'UPDATE users SET username = $1, password_hash = $2, act_desact = $3, numero_whatsapp = $4 WHERE id = $5'
+        'UPDATE users SET username = $1, password_hash = $2, act_desact = $3, numero_whatsapp = $4 WHERE id = $5',
         [usuario, password, activo ? 'SI' : 'NO', numeroWhatsApp, id]
       );
       console.log(`✅ Usuario ${usuario} actualizado en Supabase`);
     } else {
       await client.query(
-        'INSERT INTO users (id, username, password_hash, act_desact, estado_seguridad, numero_whatsapp) VALUES ($1, $2, $3, $4, $5, $6)'
+        'INSERT INTO users (id, username, password_hash, act_desact, estado_seguridad, numero_whatsapp) VALUES ($1, $2, $3, $4, $5, $6)',
         [id, usuario, password, activo ? 'SI' : 'NO', 'NORMAL', numeroWhatsApp]
       );
       console.log(`✅ Usuario ${usuario} creado en Supabase`);
