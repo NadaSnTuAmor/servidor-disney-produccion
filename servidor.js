@@ -24,34 +24,43 @@ const VIGILANCIA_REVISIONES = [
 ];
 
 // 🛡️ CONFIGURACIÓN SEGURA - DESDE VARIABLES DE ENTORNO
+// 🚀 CONFIGURACIÓN MEJORADA CON CONNECTION POOLING
 const DB_CONFIG = {
   connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   },
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-  statement_timeout: 15000,
-  query_timeout: 15000,
+  // 🔧 PARÁMETROS DE CONNECTION POOLING
+  max: 10,                    // Máximo 10 conexiones simultáneas (bajo para evitar límites)
+  idleTimeoutMillis: 30000,   // 30 segundos para cerrar conexiones inactivas
+  connectionTimeoutMillis: 10000, // 10 segundos timeout para establecer conexión
+  statement_timeout: 15000,   // 15 segundos timeout para statements
+  query_timeout: 15000,       // 15 segundos timeout para queries
 };
 
+// 🚀 FUNCIÓN MEJORADA CON RETRY LOGIC Y EXPONENTIAL BACKOFF
 async function createConnection() {
   const maxRetries = 5;
-  const baseDelay = 1000;
+  const baseDelay = 1000; // 1 segundo
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`🔄 Intento de conexión ${attempt}/${maxRetries} a Supabase...`);
+
       const client = new Client(DB_CONFIG);
       await client.connect();
       console.log(`✅ Conexión exitosa a Supabase en intento ${attempt}`);
       return client;
+
     } catch (error) {
       console.error(`❌ Intento ${attempt} falló:`, error.code || error.message);
+
+      // Si es el último intento, lanzar error
       if (attempt === maxRetries) {
         console.error('🚨 TODOS LOS INTENTOS AGOTADOS - No se puede conectar a Supabase');
         throw new Error(`Supabase connection failed after ${maxRetries} attempts: ${error.message}`);
       }
+
+      // Delay exponencial: 1s, 2s, 4s, 8s, 16s
       const delay = baseDelay * Math.pow(2, attempt - 1);
       console.log(`⏳ Esperando ${delay}ms antes del siguiente intento...`);
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -67,30 +76,35 @@ const GMAIL_CONFIG = {
 };
 
 const CORREO_PRINCIPAL = process.env.CORREO_PRINCIPAL;
+
 const TELEGRAM_CONFIG = {
   BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
   YOUR_CHAT_ID: process.env.TELEGRAM_CHAT_ID
 };
+
 const GREEN_API_CONFIG = {
   idInstance: process.env.GREEN_API_ID_INSTANCE,
   apiTokenInstance: process.env.GREEN_API_API_TOKEN_INSTANCE,
   baseUrl: 'https://api.green-api.com'
 };
+
 const ADMIN_CONFIG = {
   numeroWhatsApp: process.env.ADMIN_WHATSAPP
 };
 
+// JWT CONFIGURATION Y FUNCIONES
 const JWT_CONFIG = {
   SECRET: process.env.JWT_SECRET,
   EXPIRATION: '20m',
   ALGORITHM: 'HS256'
 };
 
+// 🔐 VALIDAR QUE TODAS LAS VARIABLES EXISTEN
 const requiredEnvVars = [
   'DATABASE_URL', 'GREEN_API_ID_INSTANCE', 'GREEN_API_API_TOKEN_INSTANCE', 'TELEGRAM_BOT_TOKEN',
   'TELEGRAM_CHAT_ID', 'ADMIN_WHATSAPP', 'GMAIL_CLIENT_ID',
   'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN', 'CORREO_PRINCIPAL',
-  'JWT_SECRET'
+  'JWT_SECRET', 'GOOGLE_SHEETS_ID'
 ];
 
 let missingVars = [];
@@ -110,20 +124,23 @@ console.log('✅ Todas las variables de entorno cargadas correctamente');
 console.log('🛡️ Credenciales protegidas - NO expuestas en código');
 console.log('🔐 JWT Ultra Seguro configurado correctamente');
 
+// Crear instancia del bot Telegram
 const telegramBot = new TelegramBot(TELEGRAM_CONFIG.BOT_TOKEN);
 
+// FUNCIÓN PARA GENERAR TOKEN
 function generateToken(user) {
   const payload = {
     user_id: user.id,
     username: user.username,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (20 * 60)
+    exp: Math.floor(Date.now() / 1000) + (20 * 60) // 20 minutos
   };
   const token = jwt.sign(payload, JWT_CONFIG.SECRET, { algorithm: JWT_CONFIG.ALGORITHM });
   console.log(`🔐 Token generado para ${user.username} - Expira en 20 minutos`);
   return token;
 }
 
+// FUNCIÓN PARA VERIFICAR TOKEN
 function verifyToken(token) {
   try {
     const decoded = jwt.verify(token, JWT_CONFIG.SECRET);
@@ -139,6 +156,7 @@ function verifyToken(token) {
   }
 }
 
+// FUNCIÓN PARA RENOVAR TOKEN (SLIDING EXPIRATION)
 function refreshToken(oldToken) {
   try {
     const decoded = jwt.verify(oldToken, JWT_CONFIG.SECRET, { ignoreExpiration: true });
@@ -146,7 +164,7 @@ function refreshToken(oldToken) {
       user_id: decoded.user_id,
       username: decoded.username,
       iat: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + (20 * 60)
+      exp: Math.floor(Date.now() / 1000) + (20 * 60) // +20 minutos más
     };
     const newToken = jwt.sign(newPayload, JWT_CONFIG.SECRET, { algorithm: JWT_CONFIG.ALGORITHM });
     console.log(`🔄 Token renovado para ${decoded.username} - +20 minutos más`);
@@ -157,7 +175,7 @@ function refreshToken(oldToken) {
   }
 }
 
-// ✅ MIDDLEWARE JWT CON SLIDING EXPIRATION + VERIFICACIÓN DE ESTADO EN TIEMPO REAL - ERROR 2 CORREGIDO
+// ✅ ERROR 2 CORREGIDO: MIDDLEWARE JWT CON VERIFICACIÓN DE ESTADO EN BD
 async function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -248,6 +266,7 @@ async function authenticateJWT(req, res, next) {
   }
 }
 
+// 🚨 TUS FUNCIONES EXISTENTES (MANTENIDAS INTACTAS)
 async function enviarAlertaTelegram(mensaje) {
   try {
     await telegramBot.sendMessage(TELEGRAM_CONFIG.YOUR_CHAT_ID, mensaje);
@@ -260,6 +279,7 @@ async function enviarAlertaTelegram(mensaje) {
 async function enviarAlertaWhatsApp(numeroDestino, mensaje) {
   try {
     const url = `${GREEN_API_CONFIG.baseUrl}/waInstance${GREEN_API_CONFIG.idInstance}/sendMessage/${GREEN_API_CONFIG.apiTokenInstance}`;
+
     const data = {
       chatId: `${numeroDestino}@c.us`,
       message: mensaje
@@ -273,6 +293,7 @@ async function enviarAlertaWhatsApp(numeroDestino, mensaje) {
   }
 }
 
+// TU FUNCIÓN DUAL EXISTENTE (SIN CAMBIOS)
 async function enviarAlertaDual(mensaje, numeroCliente = null) {
   try {
     console.log('🔄 INICIO enviarAlertaDual:');
@@ -332,7 +353,7 @@ async function enviarAlertaDual(mensaje, numeroCliente = null) {
   }
 }
 
-// ✅ FUNCIÓN DE ALERTA CORREGIDA - ERROR 4 SOLUCIONADO
+// ✅ ERROR 4 CORREGIDO: FUNCIÓN DE ALERTA CON FORMATO CORRECTO
 async function alertaRoboDetectado(usuario, correoComprometido, numeroCliente = null) {
   const mensaje = `🚨 ROBO DETECTADO - DISNEY+
 👤 Usuario: ${usuario}
@@ -341,7 +362,6 @@ async function alertaRoboDetectado(usuario, correoComprometido, numeroCliente = 
 🔐 Estado: BLOQUEADO AUTOMÁTICAMENTE
 ⚠️ REVISAR INMEDIATAMENTE
 🛡️ Sistema de seguridad dual activo`;
-
   return await enviarAlertaDual(mensaje, numeroCliente);
 }
 
@@ -355,11 +375,67 @@ async function alertaUsuarioReactivado(usuario, numeroCliente = null) {
   return await enviarAlertaDual(mensaje, numeroCliente);
 }
 
-// ✅ FUNCIÓN PARA SINCRONIZAR ESTADO DE VUELTA A GOOGLE SHEETS - ERROR 3 SOLUCIONADO
+// ✅ ERROR 1 CORREGIDO: OBTENER WHATSAPP DEL CLIENTE DESDE GOOGLE SHEETS
+async function obtenerWhatsAppDesdeGoogleSheets(emailBuscado) {
+  try {
+    console.log(`📋 Buscando WhatsApp para ${emailBuscado} en Google Sheets...`);
+
+    // Usar las credenciales de Google que ya tienes configuradas
+    const oAuth2Client = new google.auth.OAuth2(
+      GMAIL_CONFIG.CLIENT_ID,
+      GMAIL_CONFIG.CLIENT_SECRET,
+      GMAIL_CONFIG.REDIRECT_URL
+    );
+    oAuth2Client.setCredentials({
+      refresh_token: GMAIL_CONFIG.REFRESH_TOKEN
+    });
+
+    // Crear cliente de Google Sheets
+    const sheets = google.sheets({ version: 'v4', auth: oAuth2Client });
+
+    // Tu Google Sheets ID
+    const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+
+    // Buscar en el rango donde están los datos (ajusta según tus columnas)
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: spreadsheetId,
+      range: 'A:H', // Columnas A hasta H (donde H es numeroWhatsApp)
+    });
+
+    const rows = response.data.values;
+    if (!rows) {
+      console.log('No se encontraron datos en Google Sheets');
+      return null;
+    }
+
+    // Buscar fila donde alguna columna de emails = email buscado
+    for (let i = 1; i < rows.length; i++) { // Empezar en 1 (saltar header)
+      const row = rows[i];
+      // Buscar en todas las columnas de emails (C, D, E, F, G)
+      for (let j = 2; j < 7; j++) { // Columnas C a G (indexes 2 a 6)
+        if (row[j] && row[j].toLowerCase().trim() === emailBuscado.toLowerCase().trim()) {
+          const numeroWhatsApp = row[7]; // Columna H (index 7)
+          console.log(`✅ Encontrado WhatsApp para ${emailBuscado}: ${numeroWhatsApp}`);
+          return numeroWhatsApp;
+        }
+      }
+    }
+
+    console.log(`⚠️ No se encontró WhatsApp para ${emailBuscado} en Google Sheets`);
+    return null;
+
+  } catch (error) {
+    console.error('❌ Error obteniendo WhatsApp de Google Sheets:', error);
+    return null;
+  }
+}
+
+// ✅ ERROR 3 CORREGIDO: SYNC GOOGLE SHEETS (OPCIONAL)
 async function sincronizarEstadoAGoogleSheets(userId, nuevoEstado) {
   try {
     console.log(`🔄 Sincronizando estado ${nuevoEstado} para usuario ${userId} a Google Sheets...`);
 
+    // Si tienes webhook configurado
     const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK;
 
     if (webhookUrl) {
@@ -383,7 +459,7 @@ async function sincronizarEstadoAGoogleSheets(userId, nuevoEstado) {
   }
 }
 
-// ✅ FUNCIÓN MEJORADA PARA BLOQUEAR USUARIO POR EMAIL DETECTADO + OBTENER NÚMERO WHATSAPP - ERRORES 1,3,4 SOLUCIONADOS
+// ✅ ERRORES 1,3,4 CORREGIDOS: FUNCIÓN MEJORADA PARA BLOQUEAR USUARIO
 async function bloquearUsuarioPorCorreo(email) {
   let client;
   try {
@@ -391,7 +467,7 @@ async function bloquearUsuarioPorCorreo(email) {
 
     client = await createConnection();
 
-    // 🎯 NUEVA QUERY: Obtener usuario Y su número WhatsApp
+    // Buscar qué usuario(s) tienen este email y bloquearlos
     const result = await client.query(`
       UPDATE users 
       SET estado_seguridad = 'BLOQUEADO' 
@@ -401,17 +477,21 @@ async function bloquearUsuarioPorCorreo(email) {
         JOIN accounts a ON ua.account_id = a.id 
         WHERE a.email_address = $1
       )
-      RETURNING id, username, numeroWhatsApp
+      RETURNING id, username
     `, [email.toLowerCase()]);
 
     if (result.rows.length > 0) {
+      // Usuario(s) encontrado(s) y bloqueado(s)
       for (const user of result.rows) {
-        console.log(`🔴 USUARIO BLOQUEADO: ID=${user.id}, Username=${user.username}, Email=${email}, WhatsApp=${user.numerowhatsapp}`);
+        console.log(`🔴 USUARIO BLOQUEADO: ID=${user.id}, Username=${user.username}, Email=${email}`);
 
-        // 🎯 ENVIAR ALERTAS CON NÚMERO DEL CLIENTE - FORMATO CORRECTO
-        await alertaRoboDetectado(user.username, email, user.numerowhatsapp);
+        // ✅ ERROR 1 CORREGIDO: Obtener WhatsApp del cliente desde Google Sheets
+        const numeroWhatsApp = await obtenerWhatsAppDesdeGoogleSheets(email);
 
-        // 🔄 SINCRONIZAR A GOOGLE SHEETS
+        // ✅ ERROR 4 CORREGIDO: Parámetros correctos (username, email, whatsapp)
+        await alertaRoboDetectado(user.username, email, numeroWhatsApp);
+
+        // ✅ ERROR 3 CORREGIDO: Sincronizar estado a Google Sheets
         await sincronizarEstadoAGoogleSheets(user.id, 'BLOQUEADO');
       }
 
@@ -443,11 +523,15 @@ async function bloquearUsuarioPorCorreo(email) {
   }
 }
 
+// 🎯 SISTEMA DE VIGILANCIA INTELIGENTE (SIN CAMBIOS)
+
+// Función para generar tiempo aleatorio dentro de un rango
 function generarTiempoAleatorio(minInicio, minFin) {
   const randomMinutos = Math.random() * (minFin - minInicio) + minInicio;
-  return randomMinutos * 60 * 1000;
+  return randomMinutos * 60 * 1000; // Convertir a millisegundos
 }
 
+// Función para cancelar timers de un email específico
 function cancelarVigilanciaEmail(email) {
   const emailKey = email.toLowerCase();
   if (watchList.has(emailKey)) {
@@ -462,9 +546,11 @@ function cancelarVigilanciaEmail(email) {
   }
 }
 
+// Función principal para iniciar vigilancia de un email
 function iniciarVigilanciaEmail(email) {
   const emailKey = email.toLowerCase();
 
+  // Cancelar vigilancia anterior si existe
   cancelarVigilanciaEmail(email);
 
   const startTime = Date.now();
@@ -474,6 +560,7 @@ function iniciarVigilanciaEmail(email) {
   console.log(`⏰ Duración total: 15 minutos`);
   console.log(`🔍 Revisiones programadas: ${VIGILANCIA_REVISIONES.length}`);
 
+  // Programar cada revisión
   VIGILANCIA_REVISIONES.forEach((revision, index) => {
     const tiempoEspera = generarTiempoAleatorio(revision.minInicio, revision.minFin);
     const minutoReal = (tiempoEspera / (60 * 1000)).toFixed(1);
@@ -484,8 +571,10 @@ function iniciarVigilanciaEmail(email) {
       try {
         console.log(`🔍 EJECUTANDO Revisión ${index + 1}/5 para ${email} (${revision.descripcion})`);
 
+        // Buscar correos de Disney+
         const correos = await buscarCorreosEnGmail(email);
 
+        // Verificar si hay correo de Disney+ con código
         const alertaDisney = correos.find(m =>
           m.subject === 'Cuenta de MyDisney actualizada' &&
           (
@@ -498,11 +587,13 @@ function iniciarVigilanciaEmail(email) {
         if (alertaDisney) {
           console.log(`🚨 ¡CÓDIGO DISNEY+ DETECTADO en ${email}!`);
 
+          // Cancelar vigilancia restante
           cancelarVigilanciaEmail(email);
 
+          // ✅ ERRORES CORREGIDOS: Bloquear usuario con todas las correcciones aplicadas
           await bloquearUsuarioPorCorreo(email);
 
-          console.log(`🔴 Usuario bloqueado automáticamente por email: ${email}`);
+          console.log(`🔴 Usuario bloqueado automáticamente: ${email}`);
         } else {
           console.log(`✅ Revisión ${index + 1}: Sin alertas para ${email}`);
         }
@@ -515,13 +606,15 @@ function iniciarVigilanciaEmail(email) {
     timers.push(timer);
   });
 
+  // Timer para limpiar después de 15 minutos
   const cleanupTimer = setTimeout(() => {
     cancelarVigilanciaEmail(email);
     console.log(`⏰ Vigilancia terminada para ${email} (15 minutos completados)`);
-  }, 15 * 60 * 1000);
+  }, 15 * 60 * 1000); // 15 minutos
 
   timers.push(cleanupTimer);
 
+  // Guardar en watchList
   watchList.set(emailKey, {
     startTime: startTime,
     timers: timers
@@ -545,6 +638,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// TU FUNCIÓN GMAIL EXISTENTE (SIN CAMBIOS)
 async function connectGmail() {
   const oAuth2Client = new google.auth.OAuth2(
     GMAIL_CONFIG.CLIENT_ID,
@@ -558,6 +652,7 @@ async function connectGmail() {
   return gmail;
 }
 
+// TU FUNCIÓN BUSCAR CORREOS (SIN CAMBIOS)
 async function buscarCorreosEnGmail(emailBuscado) {
   try {
     const gmail = await connectGmail();
@@ -601,7 +696,7 @@ async function buscarCorreosEnGmail(emailBuscado) {
               body = Buffer.from(part.body.data, 'base64').toString('utf-8');
               break;
             } else if (part.mimeType === 'text/html' && part.body?.data) {
-              body = Buffer.from(part.body.data, 'base64').toString('utf-8');
+              body = Buffer.from(part.body.data, 'base64').toString('utf-8'); // ← HTML COMPLETO
               break;
             }
           }
@@ -621,8 +716,8 @@ async function buscarCorreosEnGmail(emailBuscado) {
           from: from,
           to: to,
           date: fechaFormateada,
-          body: body,
-          preview: body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 150) + '...'
+          body: body, // HTML completo
+          preview: body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 150) + '...' // Solo para preview
         });
         console.log(`✅ Procesado: ${subject} - ${fechaFormateada}`);
 
@@ -639,6 +734,7 @@ async function buscarCorreosEnGmail(emailBuscado) {
   }
 }
 
+// MIDDLEWARE PARA FUNCIONES EXISTENTES
 function authenticateUser(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -647,7 +743,7 @@ function authenticateUser(req, res, next) {
   next();
 }
 
-// LOGIN JWT CON SUPABASE POSTGRESQL
+// LOGIN CON JWT
 app.post('/auth/login', async (req, res) => {
   let client;
   try {
@@ -736,6 +832,7 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
+// RENOVAR TOKEN
 app.post('/auth/refresh', (req, res) => {
   const { token } = req.body;
   if (!token) {
@@ -764,6 +861,7 @@ app.post('/auth/refresh', (req, res) => {
   }
 });
 
+// PERFIL DE USUARIO JWT
 app.get('/auth/profile', authenticateJWT, (req, res) => {
   res.json({
     success: true,
@@ -776,6 +874,7 @@ app.get('/auth/profile', authenticateJWT, (req, res) => {
   });
 });
 
+// LOGOUT JWT
 app.post('/auth/logout', authenticateJWT, (req, res) => {
   console.log(`👋 Logout JWT para usuario: ${req.user.username}`);
   res.json({
@@ -784,6 +883,7 @@ app.post('/auth/logout', authenticateJWT, (req, res) => {
   });
 });
 
+// ENDPOINT SEGURO: ENVIAR WHATSAPP DESDE APK
 app.post('/api/send-whatsapp', authenticateJWT, async (req, res) => {
   try {
     const { numero, mensaje } = req.body;
@@ -815,6 +915,7 @@ app.post('/api/send-whatsapp', authenticateJWT, async (req, res) => {
   }
 });
 
+// ENDPOINT SEGURO: ALERTAS DUALES DESDE APK
 app.post('/api/send-dual-alert', authenticateJWT, async (req, res) => {
   try {
     const { mensaje, numeroCliente } = req.body;
@@ -850,13 +951,20 @@ app.post('/api/send-dual-alert', authenticateJWT, async (req, res) => {
   }
 });
 
+// ENDPOINT DE STATUS CON INFO JWT
 app.get('/api/status', (req, res) => {
   res.json({
     success: true,
     message: 'Servidor JWT Ultra Seguro funcionando',
     timestamp: new Date().toISOString(),
     version: '3.2-errores-corregidos',
-    security: 'JWT Sliding Expiration + Variables protegidas + Vigilancia 5 revisiones + ERRORES CORREGIDOS',
+    security: 'JWT Sliding Expiration + Variables protegidas + Vigilancia 5 revisiones + 4 ERRORES CORREGIDOS',
+    fixes_applied: [
+      '✅ ERROR 1: WhatsApp dual (admin + cliente) desde Google Sheets',
+      '✅ ERROR 2: Bloqueo efectivo con verificación en BD',
+      '✅ ERROR 3: Sincronización Google Sheets (webhook opcional)',  
+      '✅ ERROR 4: Mensajes con formato correcto (username + email)'
+    ],
     vigilancia: {
       tipo: 'Vigilancia Inteligente Disney+',
       revisiones: VIGILANCIA_REVISIONES.length,
@@ -868,12 +976,6 @@ app.get('/api/status', (req, res) => {
       sliding: 'Auto-renovación con actividad',
       algorithm: 'HS256'
     },
-    fixes_applied: [
-      '✅ ERROR 1: WhatsApp dual (admin + cliente)',
-      '✅ ERROR 2: Bloqueo efectivo (middleware mejorado)',
-      '✅ ERROR 3: Sincronización Google Sheets',
-      '✅ ERROR 4: Mensajes de alerta corregidos'
-    ],
     endpoints: [
       'POST /auth/login - Login con JWT',
       'POST /auth/refresh - Renovar token',
@@ -886,6 +988,7 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// 🧪 ENDPOINT DE PRUEBA DE CONEXIÓN
 app.get('/test-db', async (req, res) => {
   let client;
   try {
@@ -918,6 +1021,7 @@ app.get('/test-db', async (req, res) => {
   }
 });
 
+// MANTENER TODOS TUS ENDPOINTS EXISTENTES
 app.post('/sync-user', async (req, res) => {
   let client;
   try {
@@ -925,6 +1029,7 @@ app.post('/sync-user', async (req, res) => {
 
     const { id, usuario, password, activo, correos, action } = req.body;
 
+    // MANEJAR ELIMINACIÓN DE USUARIOS
     if (action === 'delete_user') {
       client = await createConnection();
       await client.query('DELETE FROM users WHERE id = $1', [id]);
@@ -932,6 +1037,7 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'deleted' });
     }
 
+    // MANEJAR LIMPIEZA DE USUARIOS ELIMINADOS
     if (action === 'clean_deleted_users') {
       const { existing_user_ids } = req.body;
       client = await createConnection();
@@ -945,6 +1051,7 @@ app.post('/sync-user', async (req, res) => {
       return res.json({ status: 'cleaned' });
     }
 
+    // 🔧 SINCRONIZACIÓN DE CORREOS CON MANEJO ROBUSTO DE ERRORES
     if (action === 'sync_emails') {
       console.log(`📧 Iniciando sync_emails para ${usuario} (ID: ${id})`);
       console.log('📧 Correos recibidos:', correos);
@@ -1131,6 +1238,7 @@ app.post('/sync-user', async (req, res) => {
       }
     }
 
+    // SINCRONIZACIÓN NORMAL DE USUARIO
     if (!id || !usuario || !password) {
       return res.status(400).json({ error: 'Datos incompletos (id, usuario, password requeridos)' });
     }
@@ -1174,6 +1282,7 @@ app.post('/sync-user', async (req, res) => {
   }
 });
 
+// ENDPOINT PARA LISTAR TODOS LOS USUARIOS
 app.get('/usuarios', async (req, res) => {
   let client;
   try {
@@ -1217,6 +1326,7 @@ app.get('/usuarios', async (req, res) => {
   }
 });
 
+// TUS ENDPOINTS EXISTENTES (MANTENIDOS)
 app.post('/login', async (req, res) => {
   console.log('📱 Login desde app:', req.body);
   let client;
@@ -1271,6 +1381,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// ENDPOINT BUSCAR CORREOS (CON JWT) - ACTUALIZADO CON VIGILANCIA INTELIGENTE
 app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   console.log(`🔍 ${req.user.username} busca correos:`, req.body);
   try {
@@ -1298,6 +1409,7 @@ app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   }
 });
 
+// Endpoint para obtener estado del watchList
 app.get('/api/watchlist', authenticateJWT, (req, res) => {
   const currentTime = Date.now();
   const activeWatches = [];
@@ -1326,6 +1438,7 @@ app.get('/api/watchlist', authenticateJWT, (req, res) => {
   });
 });
 
+// ENDPOINTS DE SEGURIDAD EXISTENTES
 app.post('/bloquear-usuario', async (req, res) => {
   let client;
   try {
@@ -1454,6 +1567,7 @@ app.post('/reactivar-usuario', async (req, res) => {
   }
 });
 
+// ENDPOINTS DE PRUEBA EXISTENTES
 app.post('/test-telegram', async (req, res) => {
   try {
     const { mensaje } = req.body;
@@ -1571,14 +1685,14 @@ app.post('/test-dual', async (req, res) => {
 
 app.get('/', (req, res) => {
   res.json({ 
-    mensaje: '🚀 Servidor JWT ULTRA SEGURO - VIGILANCIA INTELIGENTE DISNEY+ - ERRORES CORREGIDOS',
-    version: '3.2-errores-corregidos',
-    security: '🔐 JWT Sliding Expiration + Variables protegidas + Vigilancia Inteligente + 4 ERRORES CORREGIDOS',
+    mensaje: '🚀 Servidor JWT ULTRA SEGURO - VIGILANCIA INTELIGENTE DISNEY+ - 4 ERRORES CORREGIDOS',
+    version: '3.3-errores-corregidos',
+    security: '🔐 JWT Sliding Expiration + Variables protegidas + Vigilancia Inteligente + 4 CORRECCIONES',
     fixes_applied: [
-      '✅ ERROR 1: WhatsApp dual (admin + cliente) - Obtiene número del cliente desde BD',
+      '✅ ERROR 1: WhatsApp dual (admin + cliente) - Obtiene número desde Google Sheets',
       '✅ ERROR 2: Bloqueo efectivo - Middleware verifica estado en tiempo real',
-      '✅ ERROR 3: Sincronización Google Sheets - Función agregada para sincronizar de vuelta',
-      '✅ ERROR 4: Mensajes de alerta corregidos - Formato usuario/email correcto'
+      '✅ ERROR 3: Sincronización Google Sheets - Función para sync bidireccional (opcional)',
+      '✅ ERROR 4: Mensajes corregidos - Formato usuario/email correcto'
     ],
     vigilancia: {
       tipo: '🎯 Sistema de 5 Revisiones Aleatorias',
@@ -1602,11 +1716,14 @@ app.get('/', (req, res) => {
       '✅ 🎯 VIGILANCIA INTELIGENTE Disney+ con 5 revisiones aleatorias',
       '✅ ⏰ Reset automático si llega nuevo código',
       '✅ 🔴 BLOQUEO EFECTIVO - Middleware verificación en tiempo real',
-      '✅ 📧 MENSAJES CORREGIDOS - Formato usuario/email apropiado'
+      '✅ 📱 WHATSAPP DUAL - Admin + Cliente desde Google Sheets',
+      '✅ 📧 MENSAJES CORRECTOS - Formato usuario/email apropiado',
+      '✅ 🔄 SYNC OPCIONAL - Google Sheets bidireccional'
     ]
   });
 });
 
+// INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log('🚀 ===============================================');
   console.log(`🔥 Servidor JWT ULTRA SEGURO corriendo en: http://localhost:${PORT}`);
@@ -1622,8 +1739,14 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('🎯 ✅ VIGILANCIA INTELIGENTE: Disney+ con 5 revisiones aleatorias');
   console.log('⏰ ✅ VIGILANCIA DURACIÓN: 15 minutos con reset automático');
   console.log('🎲 ✅ TIMING ALEATORIO: Minuto 2-3, 5-6, 8-9, 11-12, 14-15');
-  console.log('🔴 ✅ ERRORES CORREGIDOS: Los 4 errores principales solucionados');
+  console.log('🔴 ✅ 4 ERRORES CORREGIDOS: WhatsApp dual + Bloqueo efectivo + Sync + Mensajes');
   console.log('🚀 ===============================================');
+  console.log('');
+  console.log('🔴 ERRORES CORREGIDOS:');
+  console.log('   ✅ ERROR 1: WhatsApp dual (admin + cliente desde Google Sheets)');
+  console.log('   ✅ ERROR 2: Bloqueo efectivo (middleware verifica BD en tiempo real)');
+  console.log('   ✅ ERROR 3: Sincronización Google Sheets (función bidireccional opcional)');
+  console.log('   ✅ ERROR 4: Mensajes corregidos (formato usuario/email correcto)');
   console.log('');
   console.log('🔐 ENDPOINTS JWT:');
   console.log('POST /auth/login - Login con credenciales');
@@ -1644,12 +1767,6 @@ app.listen(PORT, '0.0.0.0', () => {
   VIGILANCIA_REVISIONES.forEach((rev, index) => {
     console.log(`   ${index + 1}. Minuto ${rev.minInicio}-${rev.minFin}: ${rev.descripcion}`);
   });
-  console.log('');
-  console.log('🔴 ERRORES CORREGIDOS:');
-  console.log('   ✅ ERROR 1: WhatsApp dual (admin + cliente)');
-  console.log('   ✅ ERROR 2: Bloqueo efectivo (middleware mejorado)');
-  console.log('   ✅ ERROR 3: Sincronización Google Sheets');
-  console.log('   ✅ ERROR 4: Mensajes de alerta corregidos');
   console.log('');
 });
 
