@@ -1382,30 +1382,89 @@ app.post('/login', async (req, res) => {
 });
 
 // ENDPOINT BUSCAR CORREOS (CON JWT) - ACTUALIZADO CON VIGILANCIA INTELIGENTE
+// ENDPOINT BUSCAR CORREOS CON VALIDACIÓN DE SEGURIDAD UNIVERSAL
 app.post('/buscar-correos', authenticateJWT, async (req, res) => {
-  console.log(`🔍 ${req.user.username} busca correos:`, req.body);
+  console.log(`🔍 ${req.user.username} solicita búsqueda:`, req.body);
+  
+  let client;
   try {
     const { email_busqueda } = req.body;
+    
+    if (!email_busqueda) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email a buscar es requerido'
+      });
+    }
+    
+    // 🛡️ VALIDACIÓN UNIVERSAL DE SEGURIDAD
+    client = await createConnection();
+    
+    console.log(`🔐 Verificando permisos para usuario ID: ${req.user.user_id} (${req.user.username})`);
+    
+    // Obtener TODOS los emails asociados al usuario autenticado
+    const emailsPermitidos = await client.query(`
+      SELECT a.email_address 
+      FROM accounts a 
+      JOIN user_accounts ua ON a.id = ua.account_id 
+      WHERE ua.user_id = $1
+    `, [req.user.user_id]);
+    
+    const emailsDelUsuario = emailsPermitidos.rows.map(row => row.email_address.toLowerCase().trim());
+    
+    console.log(`📧 Emails autorizados para ${req.user.username}:`, emailsDelUsuario);
+    console.log(`🔍 Email solicitado: ${email_busqueda.toLowerCase().trim()}`);
+    
+    // 🚨 VALIDACIÓN CRÍTICA: ¿El email pertenece al usuario?
+    if (!emailsDelUsuario.includes(email_busqueda.toLowerCase().trim())) {
+      console.log(`🚨 ACCESO DENEGADO: ${req.user.username} (ID:${req.user.user_id}) intentó acceso no autorizado`);
+      console.log(`❌ Email solicitado: ${email_busqueda}`);
+      console.log(`✅ Emails permitidos: ${emailsDelUsuario.join(', ')}`);
+      
+      return res.status(403).json({
+        success: false,
+        error: 'Acceso denegado - Email no autorizado',
+        message: `Solo puedes buscar emails asociados a tu cuenta`,
+        code: 'VIOLATION_DETECTED',
+        usuario_violador: req.user.username,
+        email_no_autorizado: email_busqueda,
+        emails_permitidos: emailsDelUsuario
+      });
+    }
+    
+    console.log(`✅ ACCESO AUTORIZADO: ${req.user.username} puede buscar ${email_busqueda}`);
+    
+    // 📧 CONTINUAR CON BÚSQUEDA (Solo si está autorizado)
     const correosEncontrados = await buscarCorreosEnGmail(email_busqueda);
-
+    
     res.json({
       success: true,
-      emails:  correosEncontrados,
-      total:   correosEncontrados.length,
+      emails: correosEncontrados,
+      total: correosEncontrados.length,
       email_buscado: email_busqueda,
-      searched_by:   req.user.username,
+      searched_by: req.user.username,
+      security_validated: true,
       correo_principal_leido: CORREO_PRINCIPAL
     });
-
+    
     console.log(`🎯 Iniciando vigilancia inteligente para: ${email_busqueda}`);
     iniciarVigilanciaEmail(email_busqueda);
-
+    
   } catch (error) {
-    console.error('❌ Error buscando correos:', error);
+    console.error('❌ Error en búsqueda segura:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
     });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada correctamente');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
   }
 });
 
