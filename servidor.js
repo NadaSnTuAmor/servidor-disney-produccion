@@ -486,7 +486,7 @@ async function bloquearUsuarioPorCorreo(email) {
         console.log(`🔴 USUARIO BLOQUEADO: ID=${user.id}, Username=${user.username}, Email=${email}`);
 
         // ✅ ERROR 1 CORREGIDO: Obtener WhatsApp del cliente desde Google Sheets
-        const numeroWhatsApp = await obtenerWhatsAppDesdeGoogleSheets(email);
+        const numeroWhatsApp = await obtenerWhatsAppDesdeBD(user.id);
 
         // ✅ ERROR 4 CORREGIDO: Parámetros correctos (username, email, whatsapp)
         await alertaRoboDetectado(user.username, email, numeroWhatsApp);
@@ -1027,7 +1027,7 @@ app.post('/sync-user', async (req, res) => {
   try {
     console.log('📨 Datos recibidos de Google Sheets:', req.body);
 
-    const { id, usuario, password, activo, correos, action } = req.body;
+    const { id, usuario, password, activo, correos, action, numeroWhatsApp } = req.body;
 
     // MANEJAR ELIMINACIÓN DE USUARIOS
     if (action === 'delete_user') {
@@ -1249,14 +1249,14 @@ app.post('/sync-user', async (req, res) => {
 
     if (checkResult.rows.length > 0) {
       await client.query(
-        'UPDATE users SET username = $1, password_hash = $2, act_desact = $3 WHERE id = $4',
-        [usuario, password, activo ? 'SI' : 'NO', id]
+        'UPDATE users SET username = $1, password_hash = $2, act_desact = $3, numero_whatsapp = $4 WHERE id = $5'
+        [usuario, password, activo ? 'SI' : 'NO', numeroWhatsApp, id]
       );
       console.log(`✅ Usuario ${usuario} actualizado en Supabase`);
     } else {
       await client.query(
-        'INSERT INTO users (id, username, password_hash, act_desact, estado_seguridad) VALUES ($1, $2, $3, $4, $5)',
-        [id, usuario, password, activo ? 'SI' : 'NO', 'NORMAL']
+        'INSERT INTO users (id, username, password_hash, act_desact, estado_seguridad, numero_whatsapp) VALUES ($1, $2, $3, $4, $5, $6)'
+        [id, usuario, password, activo ? 'SI' : 'NO', 'NORMAL', numeroWhatsApp]
       );
       console.log(`✅ Usuario ${usuario} creado en Supabase`);
     }
@@ -1832,3 +1832,31 @@ app.listen(PORT, '0.0.0.0', () => {
 process.on('unhandledRejection', (err) => {
   console.error('❌ Error no manejado:', err);
 });
+
+// 📱 FUNCIÓN SIMPLE: Obtener WhatsApp desde BD (reemplaza Google Sheets)
+async function obtenerWhatsAppDesdeBD(userId) {
+  let client;
+  try {
+    client = await createConnection();
+    const result = await client.query(
+      'SELECT numero_whatsapp FROM users WHERE id = $1',
+      [userId]
+    );
+    
+    const numeroWhatsApp = result.rows[0]?.numero_whatsapp;
+    console.log(`📱 WhatsApp para usuario ${userId}: ${numeroWhatsApp}`);
+    return numeroWhatsApp;
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo WhatsApp de BD:', error);
+    return null;
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
+  }
+}
