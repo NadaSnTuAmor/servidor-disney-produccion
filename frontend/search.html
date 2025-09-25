@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscar Códigos Disney+ - Shield System</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/glassmorphism.css">
+    <link rel="stylesheet" href="css/search.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="search-body">
+    <!-- Background -->
+    <div class="background">
+        <div class="gradient-overlay"></div>
+        <div class="animated-particles"></div>
+    </div>
+
+    <!-- Header simple -->
+    <header class="search-header glass-card">
+        <div class="header-content">
+            <div class="logo-section">
+                <i class="fas fa-shield-alt"></i>
+                <span class="logo-text">Disney+ Shield</span>
+            </div>
+            <div class="user-info">
+                <span class="welcome-text">Bienvenido, <strong id="userNameDisplay">Usuario</strong></span>
+                <button class="logout-btn" onclick="doLogout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main search container -->
+    <main class="search-container">
+        <div class="search-card glass-card">
+            <!-- Title -->
+            <div class="search-title-section">
+                <div class="title-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h1 class="search-title">Buscar Códigos Disney+</h1>
+                <p class="search-subtitle">Ingresa tu email para encontrar los códigos de verificación</p>
+            </div>
+
+            <!-- Search form -->
+            <form class="search-form" id="searchForm">
+                <div class="search-input-group">
+                    <div class="input-container">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input 
+                            type="email" 
+                            id="emailInput" 
+                            name="email" 
+                            placeholder="tucorreo@gmail.com"
+                            required
+                            autocomplete="email"
+                        >
+                        <label for="emailInput">Tu Email</label>
+                    </div>
+                    
+                    <button type="submit" class="search-button" id="searchButton">
+                        <span class="button-text">
+                            <i class="fas fa-search"></i>
+                            Buscar Códigos
+                        </span>
+                        <div class="button-loader hidden">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Search tips -->
+                <div class="search-tips">
+                    <div class="tip-item">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Buscaremos códigos Disney+ en tu email</span>
+                    </div>
+                    <div class="tip-item">
+                        <i class="fas fa-clock"></i>
+                        <span>Resultados de las últimas 24 horas</span>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Messages -->
+            <div class="message-container">
+                <div class="error-message hidden" id="errorMessage">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="errorText"></span>
+                </div>
+
+                <div class="success-message hidden" id="successMessage">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="successText"></span>
+                </div>
+
+                <div class="info-message hidden" id="infoMessage">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="infoText"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results section -->
+        <div class="results-section hidden" id="resultsSection">
+            <div class="results-card glass-card">
+                <div class="results-header">
+                    <div class="results-title">
+                        <i class="fas fa-inbox"></i>
+                        <h2>Códigos Encontrados</h2>
+                        <span class="results-count" id="resultsCount">0 resultados</span>
+                    </div>
+                    <div class="results-actions">
+                        <button class="refresh-btn" onclick="refreshResults()">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="new-search-btn" onclick="newSearch()">
+                            Nueva Búsqueda
+                        </button>
+                    </div>
+                </div>
+
+                <div class="results-content" id="resultsContent">
+                    <!-- Results will be loaded here -->
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination-container hidden" id="paginationContainer">
+                    <div class="pagination" id="pagination">
+                        <!-- Pagination will be generated -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="search-footer">
+        <div class="footer-content">
+            <p>&copy; 2025 Disney+ Shield System - Protección de Cuentas</p>
+            <div class="footer-links">
+                <a href="#" onclick="showHelp()">Ayuda</a>
+                <a href="#" onclick="showPrivacy()">Privacidad</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Help Modal -->
+    <div class="modal-overlay hidden" id="helpModal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3>¿Cómo usar el buscador?</h3>
+                <button class="modal-close" onclick="closeHelp()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="help-steps">
+                    <div class="help-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Escribe tu email</h4>
+                            <p>Ingresa la dirección de correo donde recibes los códigos Disney+</p>
+                        </div>
+                    </div>
+                    <div class="help-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Haz clic en "Buscar"</h4>
+                            <p>El sistema buscará automáticamente los códigos en tu email</p>
+                        </div>
+                    </div>
+                    <div class="help-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Ve tus códigos</h4>
+                            <p>Te mostraremos todos los códigos Disney+ encontrados</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/search.js"></script>
+</body>
+</html>

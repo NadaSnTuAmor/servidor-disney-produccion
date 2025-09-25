@@ -1,18 +1,13 @@
 // ⚠️ IMPORTANTE: Cargar variables de entorno PRIMERO
-// ✅ CAMBIAR TODO EL INICIO POR ESTO:
-import dotenv from 'dotenv';
-dotenv.config();
-
-import express from 'express';
-import pkg from 'pg';
-const { Client } = pkg;
-import cors from 'cors';
-import { google } from 'googleapis';
-import fs from 'fs';
-import TelegramBot from 'node-telegram-bot-api';
-import axios from 'axios';
-import jwt from 'jsonwebtoken';
-
+require('dotenv').config();
+const express = require('express');
+const { Client } = require('pg');
+const cors = require('cors');
+const { google } = require('googleapis');
+const fs = require('fs');
+const TelegramBot = require('node-telegram-bot-api');
+const axios = require('axios');
+const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 3000;
 

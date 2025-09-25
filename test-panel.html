@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Panel de Pruebas - Sistema Disney+ Vigilancia</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.8;
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 4px solid #00d4ff;
+            transition: all 0.3s ease;
+        }
+        
+        .test-section:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .form-group {
+            margin-bottom: 18px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #00d4ff;
+            font-size: 14px;
+        }
+        
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        button {
+            background: linear-gradient(45deg, #00d4ff, #0099cc);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px 5px 5px 0;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.4);
+            background: linear-gradient(45deg, #00e6ff, #00b3e6);
+        }
+        
+        .btn-test {
+            background: linear-gradient(45deg, #ff6b00, #ff8c00) !important;
+        }
+        
+        .btn-test:hover {
+            background: linear-gradient(45deg, #ff7700, #ff9900) !important;
+            box-shadow: 0 8px 25px rgba(255, 107, 0, 0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #ff4444, #cc0000) !important;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(45deg, #ff5555, #dd0000) !important;
+            box-shadow: 0 8px 25px rgba(255, 68, 68, 0.4);
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #44ff44, #00cc00) !important;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(45deg, #55ff55, #00dd00) !important;
+            box-shadow: 0 8px 25px rgba(68, 255, 68, 0.4);
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.1);
+            border: 2px solid #00ff00;
+            color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.1);
+            border: 2px solid #ff0000;
+            color: #ff6666;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.1);
+        }
+        
+        .warning {
+            background: rgba(255, 165, 0, 0.1);
+            border: 2px solid #ffa500;
+            color: #ffcc66;
+            box-shadow: 0 0 20px rgba(255, 165, 0, 0.1);
+        }
+        
+        .step-number {
+            display: inline-block;
+            background: #00d4ff;
+            color: #1a1a2e;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 35px;
+            font-weight: bold;
+            margin-right: 15px;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .credentials-hint {
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid #00d4ff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.1);
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status-online {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00ff88;
+            border: 1px solid #00ff88;
+        }
+        
+        .status-offline {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff6666;
+            border: 1px solid #ff6666;
+        }
+
+        /* ESTILOS PARA LOS CORREOS EXPANDIBLES */
+        .email-container {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .email-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .email-content {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .email-body {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .btn-email {
+            background: #00d4ff;
+            color: black;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .btn-email.active {
+            background: #ff6b00;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Panel de Pruebas Sistema Disney+</h1>
+            <p>Prueba completa: Login → Búsqueda → Vigilancia → Notificaciones</p>
+        </div>
+
+        <!-- PASO 1: LOGIN -->
+        <div class="test-section">
+            <div class="section-title">
+                <span class="step-number">1</span>
+                <span>🚪 LOGIN AL SISTEMA</span>
+                <span class="status-badge status-offline" id="loginStatus">Desconectado</span>
+            </div>
+            
+            <div class="credentials-hint">
+                💡 <strong>Credenciales de prueba disponibles:</strong><br>
+                Usuario: USUARIO_MARIO | Contraseña: CLAVE1<br>
+                Usuario: USUARIO2 | Contraseña: CLAVE2<br>
+                Usuario: USUARIO_CARMEN | Contraseña: CARMEN123
+            </div>
+            
+            <div class="form-group">
+                <label for="loginUsername">Usuario:</label>
+                <input type="text" id="loginUsername" placeholder="USUARIO_MARIO" value="USUARIO_MARIO">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">Contraseña:</label>
+                <input type="password" id="loginPassword" placeholder="CLAVE1" value="CLAVE1">
+            </div>
+            <button onclick="testLogin()">🔐 INICIAR SESIÓN</button>
+            <button onclick="testDirectAccess()" class="btn-test">🚀 ACCESO DIRECTO</button>
+            <div id="loginResult"></div>
+        </div>
+
+        <!-- PASO 2: BUSCAR CORREO + VIGILANCIA -->
+        <div class="test-section">
+            <div class="section-title">
+                <span class="step-number">2</span>
+                <span>🔍 BUSCAR CORREO + VIGILANCIA</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="searchEmail">Email a vigilar:</label>
+                <input type="text" id="searchEmail" placeholder="correo@gmail.com" value="gx03shop+c18ar@gmail.com">
+            </div>
+            <button onclick="testSearchEmail()">🎯 BUSCAR + ACTIVAR VIGILANCIA</button>
+            <button onclick="clearSearchResults()" class="btn-test">🧹 LIMPIAR RESULTADOS</button>
+            <div id="searchResult"></div>
+        </div>
+
+        <!-- PASO 3: ESTADO DE VIGILANCIA -->
+        <div class="test-section">
+            <div class="section-title">
+                <span class="step-number">3</span>
+                <span>👁️ ESTADO DE VIGILANCIA</span>
+            </div>
+            
+            <button onclick="testWatchlist()">👁️ VER VIGILANCIA ACTIVA</button>
+            <button onclick="refreshWatchlist()" class="btn-success">🔄 ACTUALIZAR ESTADO</button>
+            <div id="watchlistResult"></div>
+        </div>
+
+        <!-- PASO 4: PRUEBAS DE NOTIFICACIONES -->
+        <div class="test-section">
+            <div class="section-title">
+                <span class="step-number">4</span>
+                <span>📱 SISTEMA DE NOTIFICACIONES</span>
+            </div>
+            
+            <button onclick="testTelegram()">📱 PROBAR TELEGRAM</button>
+            <button onclick="testWhatsApp()">📞 PROBAR WHATSAPP</button>
+            <button onclick="testDualAlert()">🚨 PROBAR ALERTA DUAL</button>
+            <button onclick="clearNotificationResults()" class="btn-test">🧹 LIMPIAR</button>
+            <div id="notificationResult"></div>
+        </div>
+
+        <!-- PASO 5: HERRAMIENTAS ADICIONALES -->
+        <div class="test-section">
+            <div class="section-title">
+                <span class="step-number">5</span>
+                <span>🛠️ HERRAMIENTAS ADICIONALES</span>
+            </div>
+            
+            <button onclick="testDatabaseConnection()">🗄️ PROBAR BASE DE DATOS</button>
+            <button onclick="getServerStatus()">⚡ ESTADO DEL SERVIDOR</button>
+            <button onclick="clearAllResults()" class="btn-danger">🧹 LIMPIAR TODO</button>
+            <div id="toolsResult"></div>
+        </div>
+    </div>
+
+    <script>
+        // ✅ URL CORREGIDA - RENDER
+        const API_BASE = 'https://servidor-disney-produccion.onrender.com';
+        let authToken = '';
+
+        console.log('🚀 Panel inicializado');
+        console.log('📡 API Base:', API_BASE);
+        console.log('🔧 Sistema listo para pruebas');
+
+        // FUNCIONES DE UTILIDAD
+        function showResult(element, message, type) {
+            element.innerHTML = `<div class="result ${type}">${message}</div>`;
+            element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function updateLoginStatus(connected) {
+            const badge = document.getElementById('loginStatus');
+            if (connected) {
+                badge.textContent = 'Conectado';
+                badge.className = 'status-badge status-online';
+            } else {
+                badge.textContent = 'Desconectado';
+                badge.className = 'status-badge status-offline';
+            }
+        }
+
+        // ✅ FUNCIÓN PARA MOSTRAR/OCULTAR CONTENIDO DEL CORREO
+        function toggleEmailContent(emailId) {
+            const content = document.getElementById(emailId);
+            const button = event.target;
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                button.textContent = '🙈 OCULTAR CONTENIDO';
+                button.className = 'btn-email active';
+            } else {
+                content.style.display = 'none';
+                button.textContent = '👁️ VER CONTENIDO';
+                button.className = 'btn-email';
+            }
+        }
+
+        // PASO 1: LOGIN
+        async function testLogin() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const result = document.getElementById('loginResult');
+            
+            if (!username || !password) {
+                showResult(result, 'Por favor completa todos los campos', 'error');
+                return;
+            }
+
+            try {
+                showResult(result, '🔄 Conectando al servidor Render...', 'warning');
+                
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: username, password: password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    authToken = data.token;
+                    updateLoginStatus(true);
+                    
+                    showResult(result, `✅ LOGIN EXITOSO! 
+
+👤 Usuario: ${data.user.username}
+🆔 ID: ${data.user.id}
+🔑 Token obtenido y válido
+📧 Emails asociados: ${data.user.emails?.length || 0}
+🛡️ Estado seguridad: ${data.user.seguridad}
+⏰ Expira en: ${data.expires_in}
+🔒 Tipo: ${data.token_type}
+🗄️ Base de datos: ${data.database}
+
+🎯 Ya puedes usar las funciones protegidas del sistema`, 'success');
+                } else {
+                    updateLoginStatus(false);
+                    showResult(result, `❌ ERROR LOGIN: ${data.message}
+
+💡 Verifica:
+- Usuario y contraseña correctos
+- Usuario no esté bloqueado
+- Conexión a base de datos funcionando`, 'error');
+                }
+            } catch (error) {
+                updateLoginStatus(false);
+                showResult(result, `❌ ERROR DE CONEXIÓN: ${error.message}
+
+🔧 Verificar:
+- Servidor Render funcionando
+- Conexión a internet estable
+- URL correcta: ${API_BASE}
+
+🆘 Si persiste, el servidor puede estar iniciándose (espera 1-2 minutos)`, 'error');
+            }
+        }
+
+        // FUNCIÓN ACCESO DIRECTO
+        function testDirectAccess() {
+            const result = document.getElementById('loginResult');
+            authToken = 'test-token-simulado-' + Date.now();
+            updateLoginStatus(true);
+            
+            showResult(result, `🚀 ACCESO DIRECTO ACTIVADO
+
+⚠️ Token simulado para pruebas
+🔑 Token: ${authToken.substring(0, 30)}...
+✅ Puedes proceder con funciones básicas
+
+📝 Nota: Algunas funciones protegidas pueden fallar
+💡 Para funcionalidad completa, usa login real`, 'warning');
+        }
+
+        // PASO 2: BUSCAR CORREO + VIGILANCIA CON CORREOS EXPANDIBLES
+        async function testSearchEmail() {
+            const email = document.getElementById('searchEmail').value;
+            const result = document.getElementById('searchResult');
+            
+            if (!email) {
+                showResult(result, '❌ Por favor ingresa un email válido', 'error');
+                return;
+            }
+
+            if (!authToken) {
+                showResult(result, '⚠️ Debes hacer login primero para usar esta función', 'error');
+                return;
+            }
+
+            try {
+                showResult(result, `🔄 PROCESANDO...
+
+📧 Email: ${email}
+🔍 Buscando correos últimas 24h
+🎯 Activando vigilancia inteligente
+⏳ Conectando con Gmail API...`, 'warning');
+                
+                const response = await fetch(`${API_BASE}/buscar-correos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ email_busqueda: email })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.text();
+                    showResult(result, `❌ ERROR ${response.status}: ${errorData}`, 'error');
+                    return;
+                }
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // ✅ GENERAR HTML INTERACTIVO PARA LOS CORREOS
+                    let resultHTML = `<div class="result success">✅ BÚSQUEDA COMPLETADA + VIGILANCIA ACTIVADA
+
+═══════════════════════════════════════
+📊 RESULTADOS DE BÚSQUEDA:
+═══════════════════════════════════════
+
+📧 Email buscado: ${data.email_buscado}
+📊 Correos encontrados: ${data.total}
+👤 Búsqueda realizada por: ${data.searched_by}
+📮 Gmail API conectado a: ${data.correo_principal_leido}
+📅 Período: Últimas 24 horas
+
+`;
+
+                    // Mostrar correos encontrados con HTML interactivo
+                    if (data.emails && data.emails.length > 0) {
+                        resultHTML += `📋 CORREOS ENCONTRADOS (${data.total}):
+
+`;
+                        
+                        // Crear HTML para cada correo
+                        data.emails.forEach((email, i) => {
+                            const emailId = `email-${i}`;
+                            const emailBody = email.body || 'Sin contenido disponible';
+                            const isDisney = email.subject.includes('MyDisney') || emailBody.includes('Disney');
+                            
+                            resultHTML += `
+<div class="email-container" style="${isDisney ? 'border-color: #ff6b00; background: rgba(255, 107, 0, 0.1);' : ''}">
+    <div class="email-header">
+        <div>
+            <strong>📧 ${email.subject}</strong> ${isDisney ? '🎯' : ''}<br>
+            📤 De: ${email.from}<br>
+            📅 Fecha: ${email.date}
+        </div>
+        <button class="btn-email" onclick="toggleEmailContent('${emailId}')">
+            👁️ VER CONTENIDO
+        </button>
+    </div>
+    
+    <div id="${emailId}" class="email-content" style="display: none;">
+        <div class="email-body">
+            <strong>📖 CONTENIDO COMPLETO:</strong><br><br>
+            ${emailBody.replace(/\n/g, '<br>')}
+        </div>
+        
+        <div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
+            <strong>📝 Vista previa:</strong> ${email.preview}<br>
+            <strong>🆔 ID:</strong> ${email.id}
+        </div>
+        
+        ${isDisney ? '<div style="color: #ff6b00; font-weight: bold; margin-top: 10px;">🚨 ¡POSIBLE CORREO DISNEY+!</div>' : ''}
+    </div>
+</div>`;
+                        });
+                    } else {
+                        resultHTML += `📭 NO SE ENCONTRARON CORREOS
+❓ Posibles razones:
+   • El email no recibió correos en 24h
+   • Email no existe en este Gmail
+   • Configuración Gmail API incorrecta
+
+`;
+                    }
+
+                    resultHTML += `
+
+═══════════════════════════════════════
+🎯 VIGILANCIA INTELIGENTE DISNEY+:
+═══════════════════════════════════════
+
+⚡ ESTADO: ACTIVA Y FUNCIONANDO
+⏰ Duración total: 15 minutos
+🔍 Sistema: 5 Revisiones aleatorias
+🎲 Intervalos: Minuto 2-3, 5-6, 8-9, 11-12, 14-15
+
+🔍 Busca: "Correo electr=C3=B3nico de MyDisney actua="
+🚨 Si detecta código Disney+: BLOQUEO AUTOMÁTICO
+📱 Notificaciones: Telegram + WhatsApp duales
+
+⚠️ SISTEMA EN VIGILANCIA ACTIVA AHORA</div>`;
+
+                    result.innerHTML = resultHTML;
+                }
+            } catch (error) {
+                showResult(result, `❌ ERROR DE CONEXIÓN: ${error.message}`, 'error');
+            }
+        }
+
+        function clearSearchResults() {
+            document.getElementById('searchResult').innerHTML = '';
+        }
+
+        // PASO 3: VIGILANCIA ACTIVA
+        async function testWatchlist() {
+            const result = document.getElementById('watchlistResult');
+            
+            if (!authToken) {
+                showResult(result, '⚠️ Debes hacer login primero', 'error');
+                return;
+            }
+
+            try {
+                showResult(result, '🔄 Consultando sistema de vigilancia...', 'warning');
+                
+                const response = await fetch(`${API_BASE}/api/watchlist`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let watchInfo = `👁️ SISTEMA DE VIGILANCIA DISNEY+ - ESTADO ACTUAL
+
+═══════════════════════════════════════
+📊 RESUMEN GENERAL:
+═══════════════════════════════════════
+
+🎯 Vigilancias activas: ${data.total || 0}
+📝 Revisiones por email: 5 revisiones aleatorias
+⏰ Duración máxima: 15 minutos
+🔧 Sistema: Inteligente con timing impredecible
+
+`;
+
+                    if (data.activeWatches && data.activeWatches.length > 0) {
+                        watchInfo += `📋 EMAILS BAJO VIGILANCIA ACTIVA:
+
+`;
+                        data.activeWatches.forEach((watch, i) => {
+                            const elapsedMin = Math.floor(watch.elapsed / 60000);
+                            const elapsedSec = Math.floor((watch.elapsed % 60000) / 1000);
+                            const remainingMin = Math.floor(watch.remainingTime / 60000);
+                            const remainingSec = Math.floor((watch.remainingTime % 60000) / 1000);
+                            
+                            watchInfo += `【 ${i+1} 】━━━━━━━━━━━━━━━━━━━━━━━━━━
+📧 Email: ${watch.email}
+⚡ Estado: ${watch.status}
+⏰ Tiempo transcurrido: ${elapsedMin}m ${elapsedSec}s
+⏳ Tiempo restante: ${remainingMin}m ${remainingSec}s
+🎯 Timers activos: ${watch.activeTimers}
+📅 Iniciado: ${new Date(watch.startTime).toLocaleString()}
+
+`;
+                        });
+                    } else {
+                        watchInfo += `📭 NO HAY VIGILANCIAS ACTIVAS
+
+💡 Para activar vigilancia:
+   1. Hacer login
+   2. Ir a "Buscar Correo + Vigilancia" 
+   3. Ingresar email a vigilar
+   4. Presionar "Buscar + Activar Vigilancia"
+
+`;
+                    }
+
+                    showResult(result, watchInfo, 'success');
+                } else {
+                    showResult(result, `❌ ERROR: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(result, `❌ ERROR DE CONEXIÓN: ${error.message}`, 'error');
+            }
+        }
+
+        function refreshWatchlist() {
+            testWatchlist();
+        }
+
+        // PASO 4: NOTIFICACIONES
+        async function testTelegram() {
+            const result = document.getElementById('notificationResult');
+            try {
+                showResult(result, '🔄 Probando notificación Telegram...', 'warning');
+                
+                const response = await fetch(`${API_BASE}/test-telegram`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        mensaje: `🧪 PRUEBA TELEGRAM - Panel Disney+
+                        
+⏰ Fecha: ${new Date().toLocaleString()}
+🔧 Origen: Panel de Pruebas
+✅ Estado: Sistema funcionando correctamente
+🛡️ Seguridad: Activa`
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(result, `✅ TELEGRAM FUNCIONANDO PERFECTAMENTE
+
+📱 Mensaje enviado exitosamente
+🎯 Canal: Admin principal
+⏰ Enviado: ${new Date().toLocaleString()}
+🔧 Estado: Conexión estable`, 'success');
+                } else {
+                    showResult(result, `❌ ERROR TELEGRAM: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(result, `❌ ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testWhatsApp() {
+            const result = document.getElementById('notificationResult');
+            try {
+                showResult(result, '🔄 Probando notificación WhatsApp...', 'warning');
+                
+                const response = await fetch(`${API_BASE}/test-whatsapp-simple`, {
+                    method: 'GET'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(result, `✅ WHATSAPP FUNCIONANDO PERFECTAMENTE
+
+📞 Mensaje enviado a: ${data.numeroDestino}
+🌐 API: GREEN-API activa
+⏰ Enviado: ${new Date().toLocaleString()}
+🔧 Estado: Conexión estable`, 'success');
+                } else {
+                    showResult(result, `❌ ERROR WHATSAPP: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(result, `❌ ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDualAlert() {
+            const result = document.getElementById('notificationResult');
+            try {
+                showResult(result, '🔄 Probando sistema de alertas duales...', 'warning');
+                
+                const response = await fetch(`${API_BASE}/test-dual`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        mensaje: `🚨 PRUEBA ALERTA DUAL - Sistema Disney+
+                        
+⏰ Fecha: ${new Date().toLocaleString()}
+🔧 Origen: Panel de Pruebas
+✅ Estado: Alertas duales funcionando
+📱 Canales: Telegram + WhatsApp
+🛡️ Seguridad: Activa en ambos canales`,
+                        numeroWhatsApp: '51935121273'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(result, `✅ SISTEMA DUAL FUNCIONANDO PERFECTAMENTE
+
+═══════════════════════════════════
+📊 RESUMEN DE ENVÍO:
+═══════════════════════════════════
+
+📱 Telegram → ${data.destinatarios?.telegram || 'Admin'}
+📞 WhatsApp Admin → ${data.destinatarios?.admin || 'Enviado'}  
+👤 WhatsApp Cliente → ${data.destinatarios?.cliente || 'Enviado'}
+
+🎯 Sistema: Alertas duales activas
+⏰ Enviado: ${new Date().toLocaleString()}
+🔧 Estado: Ambos canales funcionando`, 'success');
+                } else {
+                    showResult(result, `❌ ERROR ALERTA DUAL: ${data.error || data.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(result, `❌ ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        function clearNotificationResults() {
+            document.getElementById('notificationResult').innerHTML = '';
+        }
+
+        // PASO 5: HERRAMIENTAS ADICIONALES
+        async function testDatabaseConnection() {
+            const result = document.getElementById('toolsResult');
+            try {
+                showResult(result, '🔄 Probando conexión a base de datos...', 'warning');
+                
+                const response = await fetch(`${API_BASE}/test-db`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(result, `✅ BASE DE DATOS FUNCIONANDO
+
+🗄️ Supabase PostgreSQL conectada
+⏰ Hora DB: ${data.database_time}
+🔧 Versión: ${data.postgres_version}
+📡 Timestamp: ${data.timestamp}
+✅ Estado: ${data.message}`, 'success');
+                } else {
+                    showResult(result, `❌ ERROR BD: ${data.message}
+                    
+Código: ${data.error}
+Timestamp: ${data.timestamp}`, 'error');
+                }
+            } catch (error) {
+                showResult(result, `❌ ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        async function getServerStatus() {
+            const result = document.getElementById('toolsResult');
+            try {
+                showResult(result, '🔄 Obteniendo estado del servidor...', 'warning');
+                
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    let statusInfo = `⚡ SERVIDOR FUNCIONANDO CORRECTAMENTE
+
+═══════════════════════════════════════
+📊 INFORMACIÓN DEL SISTEMA:
+═══════════════════════════════════════
+
+🔧 Versión: ${data.version}
+🛡️ Seguridad: ${data.security}
+⏰ Timestamp: ${data.timestamp}
+💬 Estado: ${data.message}
+
+🎯 VIGILANCIA:
+   • Tipo: ${data.vigilancia?.tipo || 'Inteligente'}
+   • Revisiones: ${data.vigilancia?.revisiones || '5 aleatorias'}
+   • Duración: ${data.vigilancia?.duracion || '15 minutos'}
+   • Aleatorio: ${data.vigilancia?.aleatorio || 'Sí'}
+
+🔐 JWT:
+   • Expiración: ${data.jwt_config?.expiration || '20 minutos'}
+   • Auto-renovación: ${data.jwt_config?.sliding || 'Activa'}
+   • Algoritmo: ${data.jwt_config?.algorithm || 'HS256'}
+
+📋 ENDPOINTS DISPONIBLES:
+`;
+                    
+                    if (data.endpoints) {
+                        data.endpoints.forEach(endpoint => {
+                            statusInfo += `   • ${endpoint}\n`;
+                        });
+                    }
+
+                    showResult(result, statusInfo, 'success');
+                } else {
+                    showResult(result, `❌ ERROR: No se pudo obtener estado`, 'error');
+                }
+            } catch (error) {
+                showResult(result, `❌ ERROR: ${error.message}`, 'error');
+            }
+        }
+
+        function clearAllResults() {
+            document.getElementById('loginResult').innerHTML = '';
+            document.getElementById('searchResult').innerHTML = '';
+            document.getElementById('watchlistResult').innerHTML = '';
+            document.getElementById('notificationResult').innerHTML = '';
+            document.getElementById('toolsResult').innerHTML = '';
+            updateLoginStatus(false);
+            authToken = '';
+            
+            // Reset form values
+            document.getElementById('loginUsername').value = 'USUARIO_MARIO';
+            document.getElementById('loginPassword').value = 'CLAVE1';
+            document.getElementById('searchEmail').value = 'gx03shop+c18ar@gmail.com';
+        }
+
+        // Auto-focus y configuración inicial
+        window.onload = function() {
+            document.getElementById('loginUsername').focus();
+            console.log('🚀 Panel de Pruebas Disney+ cargado');
+            console.log('📡 API Base:', API_BASE);
+            console.log('🔧 Sistema listo para pruebas');
+        };
+
+        // Manejo de errores globales
+        window.addEventListener('error', function(e) {
+            console.error('❌ Error global:', e.error);
+        });
+    </script>
+</body>
+</html>

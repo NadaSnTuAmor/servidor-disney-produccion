@@ -1,0 +1,423 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Disney+ Aurora Colors */
+    --disney-teal: #1ce783;
+    --disney-dark-teal: #0d5d3a;
+    --disney-blue: #040714;
+    --disney-dark-blue: #020408;
+    --disney-light: #f9f9f9;
+    --disney-text: #ffffff;
+    --disney-text-secondary: #cacaca;
+    
+    /* Glassmorphism Colors */
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    
+    /* Status Colors */
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --warning-color: #f59e0b;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: var(--disney-dark-blue);
+}
+
+/* Background and effects */
+.background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background: linear-gradient(135deg, 
+        var(--disney-blue) 0%, 
+        var(--disney-dark-blue) 50%, 
+        var(--disney-dark-teal) 100%);
+}
+
+.gradient-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 20% 50%, 
+        rgba(28, 231, 131, 0.15) 0%, 
+        transparent 50%),
+        radial-gradient(circle at 80% 20%, 
+        rgba(28, 231, 131, 0.1) 0%, 
+        transparent 50%),
+        radial-gradient(circle at 40% 80%, 
+        rgba(4, 7, 20, 0.8) 0%, 
+        transparent 50%);
+    animation: gradientShift 15s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.animated-particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.animated-particles::before,
+.animated-particles::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(28, 231, 131, 0.1);
+    animation: float 20s infinite linear;
+}
+
+.animated-particles::before {
+    width: 200px;
+    height: 200px;
+    top: -100px;
+    left: -100px;
+    animation-delay: 0s;
+}
+
+.animated-particles::after {
+    width: 150px;
+    height: 150px;
+    bottom: -75px;
+    right: -75px;
+    animation-delay: 10s;
+}
+
+@keyframes float {
+    0% { transform: translateY(100vh) rotate(0deg); }
+    100% { transform: translateY(-100px) rotate(360deg); }
+}
+
+/* Main containers */
+.login-container {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 40px;
+    animation: slideInUp 0.8s ease-out;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Logo section */
+.logo-section {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.disney-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.disney-logo i {
+    font-size: 32px;
+    color: var(--disney-teal);
+    filter: drop-shadow(0 0 10px rgba(28, 231, 131, 0.5));
+}
+
+.logo-text {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--disney-text);
+    letter-spacing: -0.5px;
+}
+
+.shield-text {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--disney-teal);
+    margin-left: 4px;
+}
+
+.welcome-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--disney-text);
+    margin-bottom: 8px;
+}
+
+.welcome-subtitle {
+    font-size: 14px;
+    color: var(--disney-text-secondary);
+    font-weight: 400;
+}
+
+/* Form styles */
+.login-form {
+    width: 100%;
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.input-container {
+    position: relative;
+    width: 100%;
+}
+
+.input-container input {
+    width: 100%;
+    height: 56px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 16px 16px 16px 48px;
+    font-size: 16px;
+    color: var(--disney-text);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.input-container input:focus {
+    outline: none;
+    border-color: var(--disney-teal);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(28, 231, 131, 0.1);
+}
+
+.input-container input:focus + label,
+.input-container input:not(:placeholder-shown) + label {
+    top: -8px;
+    left: 12px;
+    font-size: 12px;
+    color: var(--disney-teal);
+    background: var(--disney-dark-blue);
+    padding: 0 8px;
+}
+
+.input-container label {
+    position: absolute;
+    left: 48px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--disney-text-secondary);
+    font-size: 16px;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.input-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--disney-text-secondary);
+    font-size: 18px;
+    z-index: 1;
+}
+
+.input-container input:focus ~ .input-icon {
+    color: var(--disney-teal);
+}
+
+.password-toggle {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--disney-text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.3s ease;
+}
+
+.password-toggle:hover {
+    color: var(--disney-teal);
+}
+
+/* Form options */
+.form-options {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 32px;
+    font-size: 14px;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    color: var(--disney-text-secondary);
+}
+
+.checkbox-container input {
+    display: none;
+}
+
+.checkmark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    margin-right: 8px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+    background: var(--disney-teal);
+    border-color: var(--disney-teal);
+}
+
+.checkbox-container input:checked ~ .checkmark::after {
+    content: '✓';
+    position: absolute;
+    top: -2px;
+    left: 2px;
+    color: white;
+    font-size: 12px;
+}
+
+/* Login button */
+.login-button {
+    width: 100%;
+    height: 56px;
+    background: linear-gradient(135deg, var(--disney-teal), var(--disney-dark-teal));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+}
+
+.login-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(28, 231, 131, 0.3);
+}
+
+.login-button:active {
+    transform: translateY(0);
+}
+
+.login-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.login-button:hover::before {
+    left: 100%;
+}
+
+.button-loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Messages */
+.error-message, .success-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 16px;
+    animation: slideIn 0.3s ease-out;
+}
+
+.error-message {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.success-message {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Utility classes */
+.hidden {
+    display: none !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .login-container {
+        padding: 20px 16px;
+    }
+    
+    .login-card {
+        max-width: 100%;
+        padding: 30px 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .disney-logo {
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .logo-text, .shield-text {
+        font-size: 24px;
+    }
+}
