@@ -87,78 +87,12 @@ function handleDemoLogin(username, password) {
     // ⭐ USUARIOS BASADOS EN TU GOOGLE SHEETS
     const demoUsers = {
         // ⭐ ADMIN
-        'NadaSnTuAmor_2025': { 
-            password: 'DisneyShield#Ultra$ecure!2025', 
+        'admin': { 
+            password: 'admin123', 
             type: USER_TYPES.ADMIN, 
-            name: 'Administrador',
-            email: 'admin@sistema.com'
+            name: 'demo',
+            email: 'demo@demo.com'
         },
-        
-        // ⭐ CLIENTES - BASADO EN TU TABLA
-        'usuario_mario': { 
-            password: 'clave1', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Mario',
-            email: 'mario@sistema.com',
-            whatsapp: '51929765920'
-        },
-        'usuario2': { 
-            password: 'clave2', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Elena',
-            email: 'elena@sistema.com'
-        },
-        'usuario3': { 
-            password: 'clave3', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Carlos',
-            email: 'carlos@sistema.com'
-        },
-        'usuario_carmen': { 
-            password: 'carmen123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Kalo',
-            email: 'carmen@sistema.com'
-        },
-        'usuario5': { 
-            password: 'clave5', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Prueba2',
-            email: 'prueba2@sistema.com'
-        },
-        'usuario_nuevo01': { 
-            password: 'clave01111', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Nuevo',
-            email: 'nuevo@sistema.com'
-        },
-        'nsta_roxana': { 
-            password: 'roxana123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Roxana',
-            email: 'roxana@sistema.com',
-            whatsapp: '51921079241'
-        },
-        
-        // ⭐ USUARIOS ADICIONALES ESTILO NSTA_
-        'nsta_mario': { 
-            password: 'mario123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Mario',
-            email: 'nsta_mario@sistema.com'
-        },
-        'nsta_carlos': { 
-            password: 'carlos123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Carlos',
-            email: 'nsta_carlos@sistema.com'
-        },
-        'nsta_beatriz': { 
-            password: 'beatriz123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Beatriz',
-            email: 'nsta_beatriz@sistema.com'
-        }
     };
     
     const user = demoUsers[username.toLowerCase()];
