@@ -1787,6 +1787,156 @@ app.get('/', (req, res) => {
   });
 });
 
+// 🌐 ENDPOINTS BRIDGE PARA FRONTEND COMPATIBILITY
+
+// 1. Test endpoint para verificaciones
+app.get('/api/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Disney+ Shield API funcionando correctamente',
+    version: '3.3-frontend-ready',
+    timestamp: new Date().toISOString(),
+    server: 'RENDER - Always Active with Cron-job',
+    status: 'ONLINE ⚡',
+    vigilancia: 'Disney+ Inteligente Activa 🎯',
+    cron_status: 'Despertando cada 10 minutos 🔄'
+  });
+});
+
+// 2. Bridge login endpoint (frontend → backend)
+app.post('/api/login', async (req, res) => {
+  let client;
+  try {
+    const { username, password } = req.body;
+    console.log('🌉 Bridge login desde frontend:', username);
+
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Usuario y contraseña requeridos'
+      });
+    }
+
+    client = await createConnection();
+
+    const result = await client.query(
+      'SELECT id, username, password_hash, estado_seguridad FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario o contraseña incorrectos'
+      });
+    }
+
+    const user = result.rows[0];
+
+    if (user.estado_seguridad === 'BLOQUEADO') {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario bloqueado por seguridad'
+      });
+    }
+
+    if (user.password_hash !== password) {
+      return res.status(401).json({
+        success: false,
+        message: 'Usuario o contraseña incorrectos'
+      });
+    }
+
+    // Obtener emails del usuario
+    const emailsResult = await client.query(`
+      SELECT a.email_address 
+      FROM accounts a 
+      JOIN user_accounts ua ON a.id = ua.account_id 
+      WHERE ua.user_id = $1
+    `, [user.id]);
+
+    const token = generateToken(user);
+
+    console.log(`✅ Bridge login exitoso para: ${username}`);
+    
+    res.json({
+      success: true,
+      message: 'Login exitoso desde frontend',
+      token: token,
+      user: {
+        id: user.id,
+        username: user.username,
+        emails: emailsResult.rows.map(row => row.email_address),
+        seguridad: user.estado_seguridad
+      },
+      expires_in: '20 minutos',
+      token_type: 'Bearer',
+      bridge: 'Frontend → JWT Auth',
+      database: 'Supabase PostgreSQL'
+    });
+
+  } catch (error) {
+    console.error('❌ Error en bridge login:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
+  }
+});
+
+// 3. API usuarios para Google Sheets compatibility
+app.get('/api/usuarios', async (req, res) => {
+  let client;
+  try {
+    client = await createConnection();
+
+    const result = await client.query(`
+      SELECT 
+        id,
+        username,
+        password_hash,
+        estado_seguridad,
+        numero_whatsapp
+      FROM users 
+      ORDER BY id ASC
+    `);
+
+    console.log(`📋 API usuarios: ${result.rows.length} usuarios enviados al frontend`);
+
+    res.json({
+      success: true,
+      total_usuarios: result.rows.length,
+      usuarios: result.rows,
+      database: 'Supabase PostgreSQL',
+      timestamp: new Date().toLocaleString('es-PE'),
+      api_version: 'Frontend Bridge v3.3'
+    });
+
+  } catch (error) {
+    console.error('❌ Error en /api/usuarios:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
+  }
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log('🚀 ===============================================');
