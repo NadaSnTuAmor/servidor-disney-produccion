@@ -1747,6 +1747,121 @@ app.post('/test-dual', async (req, res) => {
   }
 });
 
+// 🌉 ENDPOINT WEB BRIDGE - REPLICA EL FLUJO DE GOOGLE SHEETS
+app.post('/api/buscar-correos-web', async (req, res) => {
+  let client;
+  try {
+    const { email_busqueda } = req.body;
+    const authToken = req.headers.authorization;
+    
+    console.log('🌐 Búsqueda desde web:', email_busqueda);
+    console.log('🔑 Token recibido:', authToken ? 'Presente' : 'Ausente');
+    
+    if (!email_busqueda) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email a buscar es requerido'
+      });
+    }
+    
+    // 🔧 VALIDAR JWT PERO FLEXIBLE (como Google Sheets)
+    if (!authToken || !authToken.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Token de autorización requerido',
+        format: 'Bearer <token>'
+      });
+    }
+    
+    const token = authToken.substring(7);
+    const tokenValid = verifyToken(token);
+    
+    if (!tokenValid.valid) {
+      console.log('❌ Token inválido:', tokenValid.error);
+      return res.status(401).json({
+        success: false,
+        error: 'Token inválido o expirado',
+        details: tokenValid.error
+      });
+    }
+    
+    const usuario = tokenValid.decoded;
+    console.log(`🔐 Usuario autenticado: ${usuario.username} (ID: ${usuario.user_id})`);
+    
+    client = await createConnection();
+    
+    // 🎯 BUSCAR EMAILS ASOCIADOS AL USUARIO (IGUAL QUE GOOGLE SHEETS)
+    const emailsPermitidos = await client.query(`
+      SELECT a.email_address 
+      FROM accounts a 
+      JOIN user_accounts ua ON a.id = ua.account_id 
+      WHERE ua.user_id = $1
+    `, [usuario.user_id]);
+    
+    const emailsDelUsuario = emailsPermitidos.rows.map(row => row.email_address.toLowerCase().trim());
+    
+    console.log(`📧 Emails permitidos para ${usuario.username}:`, emailsDelUsuario);
+    console.log(`🔍 Email solicitado: ${email_busqueda.toLowerCase().trim()}`);
+    
+    // 🔒 VALIDAR PERMISOS (IGUAL QUE GOOGLE SHEETS)
+    if (!emailsDelUsuario.includes(email_busqueda.toLowerCase().trim())) {
+      console.log(`🚨 ACCESO DENEGADO: ${usuario.username} intentó acceder a email no autorizado`);
+      return res.status(403).json({
+        success: false,
+        error: 'Acceso denegado - Email no autorizado',
+        message: 'Solo puedes buscar emails asociados a tu cuenta',
+        usuario: usuario.username,
+        email_solicitado: email_busqueda,
+        emails_permitidos: emailsDelUsuario
+      });
+    }
+    
+    console.log(`✅ ACCESO AUTORIZADO: ${usuario.username} puede buscar ${email_busqueda}`);
+    
+    // 📧 BUSCAR CORREOS EN GMAIL (IGUAL QUE GOOGLE SHEETS)
+    const correosEncontrados = await buscarCorreosEnGmail(email_busqueda);
+    
+    console.log(`📊 Encontrados ${correosEncontrados.length} correos para ${email_busqueda}`);
+    
+    // 🎯 INICIAR VIGILANCIA INTELIGENTE DISNEY+ (IGUAL QUE GOOGLE SHEETS)
+    console.log(`🛡️ Iniciando vigilancia inteligente para: ${email_busqueda}`);
+    iniciarVigilanciaEmail(email_busqueda);
+    
+    // ✅ RESPUESTA EXITOSA
+    res.json({
+      success: true,
+      emails: correosEncontrados,
+      total: correosEncontrados.length,
+      email_buscado: email_busqueda,
+      searched_by: usuario.username,
+      user_id: usuario.user_id,
+      vigilancia_iniciada: true,
+      vigilancia_duracion: '15 minutos',
+      vigilancia_revisiones: VIGILANCIA_REVISIONES.length,
+      timestamp: new Date().toISOString(),
+      sistema: 'Disney+ Shield Web Bridge'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en búsqueda web:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Error interno del servidor',
+      message: 'Error procesando la búsqueda',
+      timestamp: new Date().toISOString()
+    });
+  } finally {
+    if (client) {
+      try {
+        await client.end();
+        console.log('🔌 Conexión cerrada en buscar-correos-web');
+      } catch (endError) {
+        console.error('⚠️ Error cerrando conexión:', endError);
+      }
+    }
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({ 
     mensaje: '🚀 Servidor JWT ULTRA SEGURO - VIGILANCIA INTELIGENTE DISNEY+ - 4 ERRORES CORREGIDOS',
