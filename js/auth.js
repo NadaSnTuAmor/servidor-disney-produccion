@@ -87,8 +87,8 @@ function handleDemoLogin(username, password) {
     // ⭐ USUARIOS BASADOS EN TU GOOGLE SHEETS
     const demoUsers = {
         // ⭐ ADMIN
-        'NadaSnTuAmor_2025': { 
-            password: 'DisneyShield#Ultra$ecure!2025', 
+        'admin': { 
+            password: 'admin123', 
             type: USER_TYPES.ADMIN, 
             name: 'Administrador',
             email: 'admin@sistema.com'
