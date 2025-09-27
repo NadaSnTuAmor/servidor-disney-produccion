@@ -1,3 +1,16 @@
+/* ⭐ VARIABLES CSS - AGREGAR AL INICIO */
+:root {
+    --disney-dark-blue: #040714;
+    --disney-blue: #0f172a;
+    --disney-teal: #1ce783;
+    --disney-dark-teal: #16a085;
+    --disney-text: #f8fafc;
+    --disney-text-secondary: #94a3b8;
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --warning-color: #f59e0b;
+}
+
 /* Admin Dashboard Styles */
 .admin-body {
     min-height: 100vh;

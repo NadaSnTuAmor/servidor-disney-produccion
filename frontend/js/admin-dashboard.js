@@ -1,5 +1,5 @@
 // Configuration
-const API_BASE_URL = 'https://tu-sistema-disney.onrender.com'; // ⚠️ CAMBIAR POR TU URL
+const API_BASE_URL = 'https://nadasntuamor.com'; // ⚠️ CAMBIAR POR TU URL
 
 // DOM Elements
 const sidebarToggle = document.getElementById('sidebarToggle');
