@@ -1,5 +1,5 @@
-// Configuration - CAMBIA ESTA URL POR TU URL DE RENDER
-const API_BASE_URL = 'https://nadasntuamor.com'; // ⚠️ CAMBIAR POR TU URL
+// Configuration - BACKEND CONECTADO
+const API_BASE_URL = 'https://nadasntuamor.com'; // ✅ TU URL
 
 // DOM Elements
 const searchForm = document.getElementById('searchForm');
@@ -113,7 +113,7 @@ function addEventListeners() {
     });
 }
 
-// Handle search form submission
+// 🚀 HANDLE SEARCH - CONECTADO CON BACKEND REAL
 async function handleSearch(e) {
     e.preventDefault();
     
@@ -129,33 +129,40 @@ async function handleSearch(e) {
     hideMessages();
     
     try {
-        // Make API call
-        const response = await fetch(`${API_BASE_URL}/buscar-correos`, {
+        console.log('🔍 Buscando códigos para:', email);
+        
+        // 🌉 USAR EL NUEVO ENDPOINT WEB BRIDGE
+        const response = await fetch(`${API_BASE_URL}/api/buscar-correos-web`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${getAuthToken()}`
             },
             body: JSON.stringify({
-                email: email
+                email_busqueda: email // ← NOMBRE CORRECTO DEL CAMPO
             })
         });
         
         const data = await response.json();
+        console.log('📡 Respuesta del servidor:', data);
         
-        if (response.ok) {
+        if (response.ok && data.success) {
             // Search successful
+            console.log(`✅ Búsqueda exitosa: ${data.total} emails encontrados`);
+            console.log(`🎯 Vigilancia Disney+ iniciada: ${data.vigilancia_iniciada ? 'SÍ' : 'NO'}`);
             handleSearchSuccess(email, data);
         } else {
             // Search failed
-            handleSearchError(data.message || 'Error en la búsqueda');
+            console.log('❌ Búsqueda fallida:', data.error);
+            handleSearchError(data.error || data.message || 'Error en la búsqueda');
         }
         
     } catch (error) {
-        console.error('Search error:', error);
+        console.error('❌ Error de conexión:', error);
         
-        // If backend not available, show demo results
-        if (error.message.includes('fetch')) {
+        // Fallback a demo solo si hay error de red
+        if (error.message.includes('fetch') || error.message.includes('network')) {
+            console.log('🎭 Usando fallback demo por error de conexión');
             handleDemoSearch(email);
         } else {
             handleSearchError('Error de conexión. Verifica tu conexión a internet.');
@@ -165,17 +172,20 @@ async function handleSearch(e) {
     }
 }
 
-// Handle demo search (remove in production)
+// Handle demo search (fallback)
 function handleDemoSearch(email) {
+    console.log('🎭 Activando modo demo para:', email);
+    
     // Generate demo results
     const demoResults = generateDemoResults(email);
     
-    showInfoMessage(`Modo demo activo. Mostrando resultados simulados para ${email}`);
+    showInfoMessage(`⚠️ Conexión con servidor no disponible. Mostrando resultados demo para ${email}`);
     
     setTimeout(() => {
         handleSearchSuccess(email, {
-            correos: demoResults,
-            total: demoResults.length
+            emails: demoResults, // ← CAMBIAR A 'emails'
+            total: demoResults.length,
+            success: true
         });
     }, 1500);
 }
@@ -253,16 +263,19 @@ function validateEmail() {
     }
 }
 
-// Handle successful search
+// 🔧 HANDLE SEARCH SUCCESS - ACTUALIZADO PARA BACKEND REAL
 function handleSearchSuccess(email, data) {
     currentSearch.email = email;
-    currentSearch.results = data.correos || [];
+    
+    // 🔧 MANEJAR AMBOS FORMATOS: backend real y demo
+    currentSearch.results = data.emails || data.correos || [];
     currentSearch.totalResults = data.total || currentSearch.results.length;
     currentSearch.currentPage = 1;
     currentSearch.totalPages = Math.ceil(currentSearch.totalResults / RESULTS_PER_PAGE);
     
     // Show success message
-    showSuccessMessage(`Búsqueda completada. Encontrados ${currentSearch.totalResults} emails con códigos Disney+`);
+    const vigilanciaText = data.vigilancia_iniciada ? ' 🛡️ Vigilancia Disney+ activada.' : '';
+    showSuccessMessage(`Búsqueda completada. Encontrados ${currentSearch.totalResults} emails con códigos Disney+${vigilanciaText}`);
     
     // Display results
     displayResults();
@@ -370,7 +383,7 @@ function displayEmptyResults() {
             <i class="fas fa-inbox"></i>
             <h3>No se encontraron códigos</h3>
             <p>No hemos encontrado emails con códigos Disney+ para esta dirección.<br>
-            Verifica que el email sea correcto o intenta con otro.</p>
+            Verifica que el email sea correcto o que esté asociado a tu cuenta.</p>
         </div>
     `;
     
