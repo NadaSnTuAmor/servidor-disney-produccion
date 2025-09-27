@@ -87,8 +87,8 @@ function handleDemoLogin(username, password) {
     // ⭐ USUARIOS BASADOS EN TU GOOGLE SHEETS
     const demoUsers = {
         // ⭐ ADMIN
-        'admin': { 
-            password: 'admin123', 
+        'demo': { 
+            password: 'demo123', 
             type: USER_TYPES.ADMIN, 
             name: 'demo',
             email: 'demo@demo.com'
