@@ -89,7 +89,7 @@ function handleDemoLogin(username, password) {
         // ⭐ ADMIN
         'demo': { 
             password: 'demo123', 
-            type: USER_TYPES.ADMIN, 
+            type: USER_TYPES.CLIENT, 
             name: 'demo',
             email: 'demo@demo.com'
         },
