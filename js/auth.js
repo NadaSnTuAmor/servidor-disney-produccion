@@ -1,5 +1,5 @@
-// Configuration - CAMBIA ESTA URL POR TU URL DE RENDER
-const API_BASE_URL = 'https://nadasntuamor.com'; // ⚠️ CAMBIAR POR TU URL
+// Configuration - BACKEND REAL CONECTADO
+const API_BASE_URL = 'https://nadasntuamor.com'; // ✅ TU URL REAL
 
 // DOM Elements
 const loginForm = document.getElementById('loginForm');
@@ -59,7 +59,7 @@ function redirectUser(userType) {
     }
 }
 
-// ⚡ HANDLE LOGIN - MODO DEMO FORZADO
+// 🚀 HANDLE LOGIN - CONECTADO CON BACKEND REAL
 async function handleLogin(e) {
     e.preventDefault();
     
@@ -75,110 +75,107 @@ async function handleLogin(e) {
     setLoadingState(true);
     hideMessages();
     
-    // ⚡ USAR SOLO MODO DEMO HASTA TENER BACKEND
-    setTimeout(() => {
-        handleDemoLogin(username, password);
+    // 🚀 CONECTAR CON TU BACKEND REAL
+    try {
+        await handleRealLogin(username, password);
+    } catch (error) {
+        console.error('Error en login:', error);
+        handleLoginError('Error de conexión. Intenta nuevamente.');
+    } finally {
         setLoadingState(false);
-    }, 1000); // Simular delay de red
+    }
 }
 
-// ⭐ DEMO LOGIN - SIMULANDO TU GOOGLE SHEETS EXACTO
-function handleDemoLogin(username, password) {
-    // ⭐ USUARIOS BASADOS EN TU GOOGLE SHEETS
-    const demoUsers = {
-        // ⭐ ADMIN
-        'NadaSnTuAmor_2025': { 
-            password: 'DisneyShield#Ultra$ecure!2025', 
-            type: USER_TYPES.ADMIN, 
-            name: 'Administrador',
-            email: 'admin@sistema.com'
-        },
+// 🌐 CONEXIÓN REAL CON TU BACKEND
+async function handleRealLogin(username, password) {
+    try {
+        console.log('🌐 Conectando con backend real para usuario:', username);
         
-        // ⭐ CLIENTES - BASADO EN TU TABLA
-        'usuario_mario': { 
-            password: 'clave1', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Mario',
-            email: 'mario@sistema.com',
-            whatsapp: '51929765920'
-        },
-        'usuario2': { 
-            password: 'clave2', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Elena',
-            email: 'elena@sistema.com'
-        },
-        'usuario3': { 
-            password: 'clave3', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Carlos',
-            email: 'carlos@sistema.com'
-        },
-        'usuario_carmen': { 
-            password: 'carmen123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Kalo',
-            email: 'carmen@sistema.com'
-        },
-        'usuario5': { 
-            password: 'clave5', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Prueba2',
-            email: 'prueba2@sistema.com'
-        },
-        'usuario_nuevo01': { 
-            password: 'clave01111', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Nuevo',
-            email: 'nuevo@sistema.com'
-        },
-        'nsta_roxana': { 
-            password: 'roxana123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Roxana',
-            email: 'roxana@sistema.com',
-            whatsapp: '51921079241'
-        },
-        
-        // ⭐ USUARIOS ADICIONALES ESTILO NSTA_
-        'nsta_mario': { 
-            password: 'mario123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Mario',
-            email: 'nsta_mario@sistema.com'
-        },
-        'nsta_carlos': { 
-            password: 'carlos123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Carlos',
-            email: 'nsta_carlos@sistema.com'
-        },
-        'nsta_beatriz': { 
-            password: 'beatriz123', 
-            type: USER_TYPES.CLIENT, 
-            name: 'Beatriz',
-            email: 'nsta_beatriz@sistema.com'
+        // 🚀 HACER REQUEST AL BACKEND REAL
+        const response = await fetch(`${API_BASE_URL}/api/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-    };
-    
-    const user = demoUsers[username.toLowerCase()];
-    
-    if (user && user.password === password) {
-        // ⭐ LOGIN EXITOSO
+
+        const result = await response.json();
+        console.log('📡 Respuesta del backend:', result);
+
+        if (result.success && result.user) {
+            // ✅ LOGIN EXITOSO CON BACKEND REAL
+            console.log('✅ Login exitoso con backend real:', result.user.username);
+            
+            // 🎯 PREPARAR DATOS PARA FRONTEND
+            const loginData = {
+                token: result.token,
+                user: {
+                    id: result.user.id,
+                    username: result.user.username,
+                    name: result.user.username, // Usar username como nombre
+                    type: result.user.seguridad === 'NORMAL' ? USER_TYPES.CLIENT : USER_TYPES.ADMIN,
+                    email: result.user.emails?.[0] || `${result.user.username}@sistema.com`,
+                    emails: result.user.emails || [],
+                    seguridad: result.user.seguridad,
+                    isActive: result.user.seguridad === 'NORMAL',
+                    createdDate: new Date().toISOString(),
+                    source: 'backend_real',
+                    database: 'Google Sheets + Supabase'
+                }
+            };
+            
+            handleLoginSuccess(loginData);
+            
+        } else {
+            // ❌ LOGIN FALLIDO
+            const errorMsg = result.message || 'Credenciales incorrectas';
+            console.log('❌ Login fallido:', errorMsg);
+            handleLoginError(errorMsg);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error conectando con backend:', error);
+        
+        // Si falla la conexión, intentar con usuario demo como fallback
+        if (username.toLowerCase() === 'demo' && password === 'demo123') {
+            console.log('🎭 Fallback a usuario demo local');
+            handleDemoLoginFallback(username, password);
+        } else {
+            handleLoginError('Error de conexión con el servidor. Verifica tu conexión a internet.');
+        }
+    }
+}
+
+// 🎭 DEMO FALLBACK (Solo si falla la conexión)
+function handleDemoLoginFallback(username, password) {
+    if (username.toLowerCase() === 'demo' && password === 'demo123') {
         const demoData = {
             token: 'demo-token-' + Date.now(),
             user: {
-                id: Math.floor(Math.random() * 1000),
-                username: username,
-                name: user.name, // ⭐ NOMBRE LIMPIO (Mario, Elena, Carlos, etc.)
-                type: user.type,
-                email: user.email,
-                whatsapp: user.whatsapp || null,
+                id: 999,
+                username: 'demo',
+                name: 'Demo User',
+                type: USER_TYPES.CLIENT,
+                email: 'demo@sistema.com',
+                emails: ['demo@sistema.com'],
+                seguridad: 'NORMAL',
                 isActive: true,
-                createdDate: new Date().toISOString()
+                createdDate: new Date().toISOString(),
+                source: 'demo_fallback',
+                database: 'Local Demo'
             }
         };
         
+        console.log('🎭 Login demo fallback exitoso');
         handleLoginSuccess(demoData);
     } else {
         handleLoginError('Credenciales incorrectas');
@@ -215,20 +212,33 @@ function handleLoginSuccess(data) {
     // Determine user type
     let userType = user.type || USER_TYPES.CLIENT;
     
-    // Store authentication data
-    const expiryTime = new Date().getTime() + (24 * 60 * 60 * 1000); // 24 hours
+    // Store authentication data con JWT real
+    const expiryTime = new Date().getTime() + (20 * 60 * 1000); // 20 minutos (igual que JWT)
     localStorage.setItem('authToken', token);
     localStorage.setItem('tokenExpiry', expiryTime.toString());
     localStorage.setItem('userData', JSON.stringify(user));
     localStorage.setItem('userType', userType);
+    localStorage.setItem('username', user.username);
+    localStorage.setItem('userEmail', user.email);
+    localStorage.setItem('userName', user.name);
     localStorage.setItem('loginTime', new Date().toISOString());
     
-    // Show success message with user type
+    // Show success message with user info
     const userTypeText = userType === USER_TYPES.ADMIN ? 'panel de administración' : 'buscador de códigos';
-    showSuccessMessage(`¡Bienvenido ${user.name}! Redirigiendo al ${userTypeText}...`);
+    const sourceText = user.source === 'backend_real' ? '(Google Sheets)' : '(Demo)';
+    showSuccessMessage(`¡Bienvenido ${user.name}! ${sourceText} Redirigiendo al ${userTypeText}...`);
     
     // Add success animation
     loginButton.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    
+    // Log successful login
+    console.log(`✅ Login completo:`, {
+        usuario: user.username,
+        tipo: userType,
+        source: user.source,
+        database: user.database,
+        emails: user.emails?.length || 0
+    });
     
     // Redirect after animation based on user type
     setTimeout(() => {
@@ -300,6 +310,9 @@ function clearAuthData() {
     localStorage.removeItem('tokenExpiry');
     localStorage.removeItem('userData');
     localStorage.removeItem('userType');
+    localStorage.removeItem('username');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
     localStorage.removeItem('loginTime');
 }
 
@@ -356,7 +369,7 @@ function validateInputField(input) {
     }
     
     if (input.name === 'password') {
-        if (value.length >= 6) {
+        if (value.length >= 1) {
             inputContainer.classList.add('valid');
         } else if (value.length > 0) {
             inputContainer.classList.add('invalid');
@@ -422,4 +435,22 @@ window.getCurrentUser = function() {
 
 window.getAuthToken = function() {
     return localStorage.getItem('authToken');
+};
+
+// 🛡️ FUNCIÓN PARA HACER REQUESTS AUTENTICADOS
+window.authenticatedFetch = async function(url, options = {}) {
+    const token = getAuthToken();
+    if (!token) {
+        throw new Error('No authentication token found');
+    }
+    
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            ...options.headers
+        }
+    };
+    
+    return fetch(url, { ...defaultOptions, ...options });
 };
