@@ -1347,19 +1347,23 @@ app.post('/login', async (req, res) => {
 
     client = await createConnection();
 
+    // Asegúrate de que la columna ROL existe en tu tabla 'users'
     const result = await client.query(
-      'SELECT id, username, password_hash FROM users WHERE username = $1 AND password_hash = $2',
+      'SELECT id, username, password_hash, rol FROM users WHERE username = $1 AND password_hash = $2',
       [usuario, password]
     );
 
     if (result.rows.length > 0) {
+      const user = result.rows[0];
       const token = Buffer.from(`${usuario}:${Date.now()}`).toString('base64');
+      const rol = user.rol ? user.rol.toUpperCase() : "CLIENTE"; // <--- Aquí extraemos el rol
 
       res.json({
         success: true,
         message: 'Login exitoso',
         token: token,
-        username: usuario
+        username: usuario,
+        rol: rol // <--- Este es el campo nuevo para tu frontend
       });
     } else {
       res.status(401).json({
