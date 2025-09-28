@@ -150,7 +150,7 @@ function loadSectionData(section) {
     }
 }
 
-// USUARIOS REALES + ACTUALIZA DASHBOARD Y SIDEBAR
+// USUARIOS REALES + ACTUALIZA DASHBOARD Y TOP BAR
 async function loadUsersData() {
     const tableBody = document.getElementById('usersTableBody');
     if (!tableBody) return;
@@ -169,10 +169,13 @@ async function loadUsersData() {
         }
         renderUsersTable(usersData);
 
-        // NUEVO: Actualiza el contador REAL en dashboard y sidebar
+        // ACTUALIZA TODOS LOS CONTADORES DE USUARIOS
         systemStats.totalUsers = usersData.length;
         document.getElementById('usersCount').textContent = usersData.length;
         document.getElementById('totalUsers').textContent = usersData.length;
+        // 🟢 ACTUALIZA EL PANEL ARRIBA DERECHA
+        const userTopCounter = document.getElementById('userTopCounter');
+        if (userTopCounter) userTopCounter.textContent = `${usersData.length} Usuarios`;
         updateStatsDisplay();
     } catch (err) {
         usersData = [];
@@ -236,7 +239,6 @@ function filterUsers() {
     renderUsersTable(filteredUsers);
 }
 
-// dashboard y secciones demo
 function updateStatsDisplay() {
     document.getElementById('totalUsers').textContent = systemStats.totalUsers;
     document.getElementById('totalSearches').textContent = systemStats.totalSearches;
