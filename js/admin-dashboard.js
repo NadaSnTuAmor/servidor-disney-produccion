@@ -54,7 +54,7 @@ function checkAdminAuth() {
     const userType = localStorage.getItem('userType');
     const userData = localStorage.getItem('userData');
     
-    if (!token || !tokenExpiry || !userData || userType !== 'ADMIN') {
+    if (!token || !tokenExpiry || !userData || !userType || userType.toUpperCase() !== 'ADMIN') {
         alert('Acceso denegado. Solo administradores pueden acceder a este panel.');
         window.location.href = 'index.html';
         return false;
