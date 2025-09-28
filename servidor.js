@@ -1938,8 +1938,9 @@ app.post('/api/login', async (req, res) => {
 
     client = await createConnection();
 
+    // 👇 AGREGA rol A LA CONSULTA
     const result = await client.query(
-      'SELECT id, username, password_hash, estado_seguridad FROM users WHERE username = $1',
+      'SELECT id, username, password_hash, estado_seguridad, rol FROM users WHERE username = $1',
       [username]
     );
 
@@ -1978,6 +1979,7 @@ app.post('/api/login', async (req, res) => {
 
     console.log(`✅ Bridge login exitoso para: ${username}`);
     
+    // 👇 AGREGA rol EN LA RESPUESTA
     res.json({
       success: true,
       message: 'Login exitoso desde frontend',
@@ -1986,7 +1988,8 @@ app.post('/api/login', async (req, res) => {
         id: user.id,
         username: user.username,
         emails: emailsResult.rows.map(row => row.email_address),
-        seguridad: user.estado_seguridad
+        seguridad: user.estado_seguridad,
+        rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"  // <--- CAMBIO AQUÍ IMPORTANTE
       },
       expires_in: '20 minutos',
       token_type: 'Bearer',
