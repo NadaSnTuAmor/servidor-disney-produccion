@@ -1,5 +1,5 @@
 // Configuration
-const API_BASE_URL = 'https://nadasntuamor.com'; // ⚠️ TU URL REAL
+const API_BASE_URL = 'https://nadasntuamor.com';
 
 // DOM Elements
 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -150,7 +150,7 @@ function loadSectionData(section) {
     }
 }
 
-// ACTUALIZADO: Usuarios reales
+// USUARIOS REALES + ACTUALIZA DASHBOARD Y SIDEBAR
 async function loadUsersData() {
     const tableBody = document.getElementById('usersTableBody');
     if (!tableBody) return;
@@ -168,6 +168,12 @@ async function loadUsersData() {
             showNotification('No se pudo cargar la lista real de usuarios', 'error');
         }
         renderUsersTable(usersData);
+
+        // NUEVO: Actualiza el contador REAL en dashboard y sidebar
+        systemStats.totalUsers = usersData.length;
+        document.getElementById('usersCount').textContent = usersData.length;
+        document.getElementById('totalUsers').textContent = usersData.length;
+        updateStatsDisplay();
     } catch (err) {
         usersData = [];
         renderUsersTable(usersData);
@@ -175,7 +181,6 @@ async function loadUsersData() {
     }
 }
 
-// Render users table (adapta los campos según tu API)
 function renderUsersTable(users) {
     const tableBody = document.getElementById('usersTableBody');
     if (!tableBody) return;
@@ -214,7 +219,6 @@ function renderUsersTable(users) {
     }
 }
 
-// Filter users
 function filterUsers() {
     const searchTerm = document.getElementById('userSearch')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('statusFilter')?.value || 'all';
@@ -232,9 +236,7 @@ function filterUsers() {
     renderUsersTable(filteredUsers);
 }
 
-// -- ESTO SIGUE IGUAL, el dashboard y las demás secciones usan tu lógica demo existente --
-// Puedes migrar monitoreo/actividad/códigos/alertas igual cuando quieras
-
+// dashboard y secciones demo
 function updateStatsDisplay() {
     document.getElementById('totalUsers').textContent = systemStats.totalUsers;
     document.getElementById('totalSearches').textContent = systemStats.totalSearches;
@@ -244,9 +246,7 @@ function updateStatsDisplay() {
     document.getElementById('alertsCount').textContent = systemStats.totalAlerts;
 }
 
-function loadDashboardData() {
-    // Si quieres reales deberás migrar el fetch aquí
-}
+function loadDashboardData() {}
 function loadMonitoringData() {}
 function loadSettingsData() {}
 function loadAlertsData() {}
@@ -256,12 +256,12 @@ function exportUsers() {}
 function refreshUsers() {}
 function startRealTimeUpdates() {}
 function getStatusText(status) {
-  const statusTexts = {
-      active: 'Activo',
-      inactive: 'Inactivo',
-      blocked: 'Bloqueado'
-  };
-  return statusTexts[status] || status || '';
+    const statusTexts = {
+        active: 'Activo',
+        inactive: 'Inactivo',
+        blocked: 'Bloqueado'
+    };
+    return statusTexts[status] || status || '';
 }
 function formatTimeAgo(date) {
     if (!date) return '';
@@ -335,7 +335,6 @@ window.doLogout = function doLogout() {
     }
 };
 
-// Add CSS for notifications
 const notificationStyles = document.createElement('style');
 notificationStyles.textContent = `
     @keyframes slideInRight {
