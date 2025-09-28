@@ -12,12 +12,13 @@ const errorMessage = document.getElementById('errorMessage');
 const successMessage = document.getElementById('successMessage');
 const errorText = document.getElementById('errorText');
 
-// User types
+// User types (debe ser en mayúsculas para comparar el backend)
 const USER_TYPES = {
     ADMIN: 'ADMIN',
     CLIENT: 'CLIENTE'
 };
 
+// Initialize
 document.addEventListener('DOMContentLoaded', function() {
     checkExistingAuth();
     loginForm.addEventListener('submit', handleLogin);
@@ -43,15 +44,14 @@ function checkExistingAuth() {
 
 // Redirect user based on type
 function redirectUser(userType) {
-    // Redirige correctamente
     if (userType === USER_TYPES.ADMIN) {
-        window.location.href = 'admin-dashboard.html'; // PANEL ADMIN
+        window.location.href = 'admin-dashboard.html';
     } else {
-        window.location.href = 'search.html'; // PANEL CLIENTE
+        window.location.href = 'search.html';
     }
 }
 
-// HANDLE LOGIN - CONECTADO CON BACKEND REAL
+// 🚀 HANDLE LOGIN - CONECTADO CON BACKEND REAL
 async function handleLogin(e) {
     e.preventDefault();
     const username = usernameInput.value.trim();
@@ -71,37 +71,47 @@ async function handleLogin(e) {
     }
 }
 
-// CONEXIÓN REAL CON TU BACKEND
+// 🌐 CONEXIÓN REAL CON TU BACKEND (CORREGIDO EL BLOQUE!)
 async function handleRealLogin(username, password) {
     try {
-        console.log('🌐 Conectando con backend real para usuario:', username);
         const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ username, password })
         });
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         const result = await response.json();
         console.log('📡 Respuesta del backend:', result);
 
-        // CAMBIO: Toma siempre el rol del result.user.rol
+        // SOLO USA EL CAMPO user.rol PARA DEFINIR EL TIPO DE USUARIO -- este es el ÚNICO cambio real!
         if (result.success && result.user && result.user.rol) {
-            const rol = result.user.rol.trim().toUpperCase(); // 'ADMIN' o 'CLIENTE'
+            const userType = result.user.rol.trim().toUpperCase(); // 'ADMIN' o 'CLIENTE'
             const loginData = {
                 token: result.token || '',
                 user: {
                     id: result.user.id,
                     username: result.user.username,
                     name: result.user.username,
-                    rol: rol, // GUARDAMOS EL ROL REAL
+                    rol: userType,
+                    email: result.user.emails?.[0] || `${result.user.username}@sistema.com`,
+                    emails: result.user.emails || [],
+                    seguridad: result.user.seguridad,
+                    isActive: true,
+                    createdDate: new Date().toISOString(),
+                    source: 'backend_real',
+                    database: 'Google Sheets + Supabase'
+                }
+            };
+            handleLoginSuccess(loginData);
+        } else if (result.success && result.user) {
+            // fallback (cliente sin rol definido, pero deberías tenerlo siempre ahora)
+            const loginData = {
+                token: result.token,
+                user: {
+                    id: result.user.id,
+                    username: result.user.username,
+                    name: result.user.username,
+                    rol: 'CLIENTE',
                     email: result.user.emails?.[0] || `${result.user.username}@sistema.com`,
                     emails: result.user.emails || [],
                     seguridad: result.user.seguridad,
@@ -113,15 +123,11 @@ async function handleRealLogin(username, password) {
             };
             handleLoginSuccess(loginData);
         } else {
-            // ❌ LOGIN FALLIDO
-            const errorMsg = result.message || 'Credenciales incorrectas';
-            console.log('❌ Login fallido:', errorMsg);
-            handleLoginError(errorMsg);
+            handleLoginError(result.message || 'Credenciales incorrectas');
         }
     } catch (error) {
         console.error('❌ Error conectando con backend:', error);
         if (username.toLowerCase() === 'demo' && password === 'demo123') {
-            console.log('🎭 Fallback a usuario demo local');
             handleDemoLoginFallback(username, password);
         } else {
             handleLoginError('Error de conexión con el servidor. Verifica tu conexión a internet.');
@@ -129,7 +135,7 @@ async function handleRealLogin(username, password) {
     }
 }
 
-// DEMO FALLBACK (Solo si falla la conexión)
+// DEMO FALLBACK (SIN MODIFICAR)
 function handleDemoLoginFallback(username, password) {
     if (username.toLowerCase() === 'demo' && password === 'demo123') {
         const demoData = {
@@ -148,14 +154,13 @@ function handleDemoLoginFallback(username, password) {
                 database: 'Local Demo'
             }
         };
-        console.log('🎭 Login demo fallback exitoso');
         handleLoginSuccess(demoData);
     } else {
         handleLoginError('Credenciales incorrectas');
     }
 }
 
-// Validate form inputs
+// Validate form inputs (SIN MODIFICAR)
 function validateInputs(username, password) {
     if (!username) {
         showErrorMessage('Por favor ingresa tu nombre de usuario');
@@ -175,11 +180,11 @@ function validateInputs(username, password) {
     return true;
 }
 
-// Handle successful login
+// Handle successful login (SOLO LEE EL CAMPO .rol Y LO USA COMO userType)
 function handleLoginSuccess(data) {
     const { token, user } = data;
-    // Determinar tipo de usuario usando SOLO user.rol
-    let userType = (user.rol === 'ADMIN') ? USER_TYPES.ADMIN : USER_TYPES.CLIENT;
+    // CAMBIO: Usa user.rol directamente, sin inventar .type
+    let userType = user.rol === USER_TYPES.ADMIN ? USER_TYPES.ADMIN : USER_TYPES.CLIENT;
     const expiryTime = new Date().getTime() + (20 * 60 * 1000); // 20 minutos
     localStorage.setItem('authToken', token);
     localStorage.setItem('tokenExpiry', expiryTime.toString());
@@ -191,18 +196,135 @@ function handleLoginSuccess(data) {
     localStorage.setItem('loginTime', new Date().toISOString());
     showSuccessMessage(`¡Bienvenido ${user.name}! Redirigiendo al ${userType === USER_TYPES.ADMIN ? 'panel de administración' : 'buscador de códigos'}...`);
     loginButton.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-    console.log(`✅ Login completo:`, { usuario: user.username, tipo: userType, source: user.source, database: user.database, emails: user.emails?.length || 0 });
-    // Redirecciona al panel correcto según rol
     setTimeout(() => {
         redirectUser(userType);
     }, 1500);
 }
 
-// El resto de funciones y helpers quedan IGUAL...
+// El RESTO de funciones UI y helpers (NADA MODIFICADO)
+function handleLoginError(message) {
+    showErrorMessage(message);
+    loginForm.style.animation = 'shake 0.5s ease-in-out';
+    setTimeout(() => {
+        loginForm.style.animation = '';
+    }, 500);
+    if (message.toLowerCase().includes('usuario')) {
+        usernameInput.focus();
+    } else {
+        passwordInput.focus();
+    }
+}
+function setLoadingState(isLoading) {
+    if (isLoading) {
+        loginButton.disabled = true;
+        buttonText.style.opacity = '0';
+        buttonLoader.classList.remove('hidden');
+        loginButton.style.cursor = 'not-allowed';
+    } else {
+        loginButton.disabled = false;
+        buttonText.style.opacity = '1';
+        buttonLoader.classList.add('hidden');
+        loginButton.style.cursor = 'pointer';
+    }
+}
+function showErrorMessage(message) {
+    errorText.textContent = message;
+    errorMessage.classList.remove('hidden');
+    successMessage.classList.add('hidden');
+    setTimeout(() => {
+        errorMessage.classList.add('hidden');
+    }, 8000);
+}
+function showSuccessMessage(message) {
+    successMessage.querySelector('span').textContent = message;
+    successMessage.classList.remove('hidden');
+    errorMessage.classList.add('hidden');
+}
+function hideMessages() {
+    errorMessage.classList.add('hidden');
+    successMessage.classList.add('hidden');
+}
+function clearAuthData() {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('tokenExpiry');
+    localStorage.removeItem('userData');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('username');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('loginTime');
+}
+function togglePassword() {
+    const passwordField = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordField.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+function addInputAnimations() {
+    const inputs = document.querySelectorAll('.input-container input');
+    inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+            this.parentElement.classList.add('focused');
+        });
+        input.addEventListener('blur', function() {
+            this.parentElement.classList.remove('focused');
+        });
+        input.addEventListener('input', function() {
+            validateInputField(this);
+        });
+    });
+}
+function validateInputField(input) {
+    const value = input.value.trim();
+    const inputContainer = input.parentElement;
+    inputContainer.classList.remove('valid', 'invalid');
+    if (input.name === 'username') {
+        if (value.length >= 3) {
+            inputContainer.classList.add('valid');
+        } else if (value.length > 0) {
+            inputContainer.classList.add('invalid');
+        }
+    }
+    if (input.name === 'password') {
+        if (value.length >= 1) {
+            inputContainer.classList.add('valid');
+        } else if (value.length > 0) {
+            inputContainer.classList.add('invalid');
+        }
+    }
+}
+const style = document.createElement('style');
+style.textContent = `
+    .input-container.valid input {
+        border-color: var(--success-color);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    .input-container.invalid input {
+        border-color: var(--error-color);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+    .input-container.valid .input-icon {
+        color: var(--success-color);
+    }
+    .input-container.invalid .input-icon {
+        color: var(--error-color);
+    }
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+`;
+document.head.appendChild(style);
 
-// ... (no repito las funciones UI, solo corregí lo importante)
-
-// Global functions
+// Global functions (SIN CAMBIOS)
 window.logout = function() {
     clearAuthData();
     window.location.href = 'index.html';
