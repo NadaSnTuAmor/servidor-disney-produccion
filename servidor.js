@@ -663,12 +663,12 @@ async function buscarCorreosEnGmail(emailBuscado) {
     const gmail = await connectGmail();
 
     const ahora = new Date();
-    const hace24Horas = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
-    const fechaDesde = hace24Horas.toISOString().split('T')[0].replace(/-/g, '/');
+    const hace2Horas = new Date(ahora.getTime() - 2 * 60 * 60 * 1000);
+    const fechaDesde = hace2Horas.toISOString().split('T')[0].replace(/-/g, '/');
     const query = `to:${emailBuscado} after:${fechaDesde}`;
 
     console.log('🔍 Buscando correos con query:', query);
-    console.log('📅 Desde:', hace24Horas.toLocaleString());
+    console.log('📅 Desde:', hace2Horas.toLocaleString());
     console.log('📅 Hasta:', ahora.toLocaleString());
 
     const response = await gmail.users.messages.list({
@@ -678,7 +678,7 @@ async function buscarCorreosEnGmail(emailBuscado) {
     });
     const messages = response.data.messages || [];
     const correos = [];
-    console.log(`📧 Encontrados ${messages.length} mensajes para ${emailBuscado} en las últimas 24h`);
+    console.log(`📧 Encontrados ${messages.length} mensajes para ${emailBuscado} en las últimas 2h`);
 
     for (const message of messages) {
       try {
