@@ -23,10 +23,13 @@ let systemStats = {
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     if (!checkAdminAuth()) return;
+
     loadAdminInfo();
-    initializeDashboard();
     addEventListeners();
     startRealTimeUpdates();
+
+    loadUsersData(); // 🔥 Ahora carga usuarios reales al iniciar (sin esperar clicks)
+    initializeDashboard();
 });
 
 // Check admin authentication
@@ -57,7 +60,7 @@ function loadAdminInfo() {
     }
 }
 
-// Initialize dashboard
+// Initialize dashboard and view
 function initializeDashboard() {
     showSection('dashboard');
     updateStatsDisplay();
@@ -153,7 +156,6 @@ function loadSectionData(section) {
 // USUARIOS REALES + ACTUALIZA DASHBOARD Y TOP BAR
 async function loadUsersData() {
     const tableBody = document.getElementById('usersTableBody');
-    if (!tableBody) return;
     try {
         const response = await fetch(`${API_BASE_URL}/api/usuarios`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
@@ -173,13 +175,12 @@ async function loadUsersData() {
         systemStats.totalUsers = usersData.length;
         document.getElementById('usersCount').textContent = usersData.length;
         document.getElementById('totalUsers').textContent = usersData.length;
-        // 🟢 ACTUALIZA EL PANEL ARRIBA DERECHA
         const userTopCounter = document.getElementById('userTopCounter');
         if (userTopCounter) userTopCounter.textContent = `${usersData.length} Usuarios`;
         updateStatsDisplay();
     } catch (err) {
         usersData = [];
-        renderUsersTable(usersData);
+        if (tableBody) renderUsersTable(usersData);
         showNotification('Error al cargar usuarios reales', 'error');
     }
 }
