@@ -39,7 +39,6 @@ document.addEventListener('DOMContentLoaded', function() {
     addEventListeners();
     
     // Load demo data
-    loadDemoData();
     
     // Start real-time updates
     startRealTimeUpdates();
@@ -273,82 +272,6 @@ function updateStatsDisplay() {
 }
 
 // Load demo data
-function loadDemoData() {
-    usersData = [
-        {
-            id: 1,
-            username: 'usuario_mario',
-            name: 'Mario',
-            email: 'mario@sistema.com',
-            status: 'active',
-            lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000),
-            searchCount: 15,
-            whatsapp: '51929765920'
-        },
-        {
-            id: 2,
-            username: 'usuario2',
-            name: 'Elena',
-            email: 'elena@sistema.com',
-            status: 'active',
-            lastActivity: new Date(Date.now() - 5 * 60 * 60 * 1000),
-            searchCount: 8,
-            whatsapp: null
-        },
-        {
-            id: 3,
-            username: 'usuario3',
-            name: 'Carlos',
-            email: 'carlos@sistema.com',
-            status: 'active',
-            lastActivity: new Date(Date.now() - 1 * 60 * 60 * 1000),
-            searchCount: 22,
-            whatsapp: null
-        },
-        {
-            id: 4,
-            username: 'usuario_carmen',
-            name: 'Kalo',
-            email: 'carmen@sistema.com',
-            status: 'inactive',
-            lastActivity: new Date(Date.now() - 24 * 60 * 60 * 1000),
-            searchCount: 3,
-            whatsapp: null
-        },
-        {
-            id: 5,
-            username: 'nsta_roxana',
-            name: 'Roxana',
-            email: 'roxana@sistema.com',
-            status: 'active',
-            lastActivity: new Date(Date.now() - 30 * 60 * 1000),
-            searchCount: 12,
-            whatsapp: '51921079241'
-        },
-        {
-            id: 6,
-            username: 'nsta_carlos',
-            name: 'Carlos',
-            email: 'nsta_carlos@sistema.com',
-            status: 'active',
-            lastActivity: new Date(Date.now() - 4 * 60 * 60 * 1000),
-            searchCount: 6,
-            whatsapp: null
-        },
-        {
-            id: 7,
-            username: 'nsta_beatriz',
-            name: 'Beatriz',
-            email: 'nsta_beatriz@sistema.com',
-            status: 'blocked',
-            lastActivity: new Date(Date.now() - 48 * 60 * 60 * 1000),
-            searchCount: 1,
-            whatsapp: null
-        }
-    ];
-    
-    console.log('✅ Demo data loaded:', usersData.length, 'users');
-}
 
 // Load dashboard data
 function loadDashboardData() {
