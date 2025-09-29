@@ -832,7 +832,11 @@ app.post('/auth/login', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error en login JWT:', error);
+    console.error('❌ Error en bridge login:', error);
+    if (error instanceof Error) {
+      // Para errores SQL, muestra stack y mensaje completo
+      console.error('STACK:', error.stack);
+    }
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
