@@ -801,6 +801,19 @@ app.post('/auth/login', async (req, res) => {
 
     const token = generateToken(user);
 
+    // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
+    const createdAt = new Date();
+    const expiresAt = new Date(createdAt.getTime() + 20 * 60 * 1000); // 20 mins adelante
+    const userAgent = req.headers['user-agent'] || null;
+    const ipAddress = req.ip;
+
+    await client.query(
+      `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [user.id, token, ipAddress, userAgent, createdAt, expiresAt]
+    );
+    console.log('✅ Sesión registrada en la base de datos');
+
     console.log(`✅ Login JWT exitoso para: ${username}`);
 
     res.json({
@@ -1976,6 +1989,19 @@ app.post('/api/login', async (req, res) => {
     `, [user.id]);
 
     const token = generateToken(user);
+
+    // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
+    const createdAt = new Date();
+    const expiresAt = new Date(createdAt.getTime() + 20 * 60 * 1000); // 20 mins adelante
+    const userAgent = req.headers['user-agent'] || null;
+    const ipAddress = req.ip;
+
+    await client.query(
+      `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [user.id, token, ipAddress, userAgent, createdAt, expiresAt]
+    );
+    console.log('✅ Sesión registrada en la base de datos');
 
     console.log(`✅ Bridge login exitoso para: ${username}`);
     
