@@ -1079,3 +1079,10 @@
 .hidden {
     display: none !important;
 }
+
+/* --- COLOR LILA PARA ICONO "USUARIOS ACTIVOS" --- */
+.stat-icon.active-users {
+    /* LILA degradado bonito, puedes cambiar los colores secundarios si quieres otro matiz */
+    background: linear-gradient(135deg, #a259f7, #7C4DFF);
+    color: #fff;
+}
