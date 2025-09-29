@@ -1331,7 +1331,8 @@ app.get('/usuarios', async (req, res) => {
       SELECT 
         id,
         username,
-        estado_seguridad
+        estado_seguridad,
+        rol
       FROM users 
       ORDER BY id ASC
     `);
@@ -1341,7 +1342,13 @@ app.get('/usuarios', async (req, res) => {
     res.json({
       success: true,
       total_usuarios: result.rows.length,
-      usuarios: result.rows,
+      usuarios: result.rows.map(u => ({
+        id: u.id,
+        username: u.username,
+        estado_seguridad: u.estado_seguridad,
+        rol: u.rol ? u.rol.toUpperCase() : "CLIENTE"
+        // NO incluye password_hash ni numero_whatsapp
+      })),
       database: 'Supabase PostgreSQL',
       timestamp: new Date().toLocaleString('es-PE')
     });
@@ -2085,9 +2092,7 @@ app.get('/api/usuarios', async (req, res) => {
       SELECT 
         id,
         username,
-        password_hash,
-        estado_seguridad,
-        numero_whatsapp
+        estado_seguridad
       FROM users 
       ORDER BY id ASC
     `);
@@ -2097,7 +2102,12 @@ app.get('/api/usuarios', async (req, res) => {
     res.json({
       success: true,
       total_usuarios: result.rows.length,
-      usuarios: result.rows,
+      usuarios: result.rows.map(u => ({
+        id: u.id,
+        username: u.username,
+        estado_seguridad: u.estado_seguridad,
+        rol: u.rol ? u.rol.toUpperCase() : "CLIENTE"
+      })),
       database: 'Supabase PostgreSQL',
       timestamp: new Date().toLocaleString('es-PE'),
       api_version: 'Frontend Bridge v3.3'
