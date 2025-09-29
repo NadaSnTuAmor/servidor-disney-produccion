@@ -1,627 +1,162 @@
-espera no mandes codigo...
-mi admin-dashboard.html:
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Administración - Disney+ Shield</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/glassmorphism.css">
-    <link rel="stylesheet" href="css/admin-dashboard.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Disney+ Shield - Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- CSS principal -->
+    <link rel="stylesheet" href="admin-dashboard.css">
+    <!-- FontAwesome para íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 <body class="admin-body">
-    <!-- Background -->
-    <div class="background">
-        <div class="gradient-overlay"></div>
-        <div class="animated-particles"></div>
-    </div>
 
     <!-- Sidebar -->
     <aside class="admin-sidebar glass-card">
         <div class="sidebar-header">
-            <div class="logo-section">
-                <i class="fas fa-shield-alt"></i>
-                <span class="logo-text">Disney+ Shield</span>
-            </div>
-            <div class="admin-badge">
-                <i class="fas fa-crown"></i>
-                <span>ADMIN</span>
-            </div>
+            <span class="logo">Disney+ Shield</span>
+            <div class="sidebar-admin"> <span class="badge">ADMIN</span> </div>
         </div>
-
-        <nav class="sidebar-nav">
-            <div class="nav-section">
-                <h3 class="nav-title">Principal</h3>
-                <ul class="nav-menu">
-                    <li class="nav-item active" data-section="dashboard">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span>Dashboard</span>
-                    </li>
-                    <li class="nav-item" data-section="users">
-                        <i class="fas fa-users"></i>
-                        <span>Usuarios</span>
-                        <div class="nav-counter" id="usersCount">7</div>
-                    </li>
-                    <li class="nav-item" data-section="monitoring">
-                        <i class="fas fa-eye"></i>
-                        <span>Monitoreo</span>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="nav-section">
-                <h3 class="nav-title">Sistema</h3>
-                <ul class="nav-menu">
+        <div class="sidebar-main">
+            <ul>
+                <li class="nav-item" data-section="dashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </li>
+                <li class="nav-item" data-section="users">
+                    <i class="fas fa-users"></i> Usuarios
+                    <span class="badge" id="usersCount">0</span>
+                </li>
+                <li class="nav-item" data-section="monitoring">
+                    <i class="fas fa-eye"></i> Monitoreo
+                </li>
+            </ul>
+            <div class="sidebar-system">
+                <ul>
                     <li class="nav-item" data-section="settings">
-                        <i class="fas fa-cog"></i>
-                        <span>Configuración</span>
+                        <i class="fas fa-cog"></i> Configuración
                     </li>
                     <li class="nav-item" data-section="alerts">
-                        <i class="fas fa-bell"></i>
-                        <span>Alertas</span>
-                        <div class="nav-counter alert" id="alertsCount">3</div>
+                        <i class="fas fa-exclamation-triangle"></i> Alertas
+                        <span class="badge alert" id="alertsCount">0</span>
                     </li>
                     <li class="nav-item" data-section="logs">
-                        <i class="fas fa-file-alt"></i>
-                        <span>Logs</span>
+                        <i class="fas fa-file-alt"></i> Logs
                     </li>
                 </ul>
             </div>
-        </nav>
-
+        </div>
         <div class="sidebar-footer">
-            <div class="admin-user">
-                <div class="admin-avatar">
-                    <i class="fas fa-user-shield"></i>
-                </div>
-                <div class="admin-info">
-                    <div class="admin-name" id="adminName">Administrador</div>
-                    <div class="admin-role">Super Admin</div>
+            <div class="admin-info">
+                <div class="admin-avatar"></div>
+                <div>
+                    <div id="adminName">ADMINISTRADOR</div>
+                    <span class="role">Super Admin</span>
                 </div>
             </div>
-            <button class="logout-btn" onclick="doLogout()" title="Cerrar Sesión">
-                <i class="fas fa-sign-out-alt"></i>
-            </button>
         </div>
     </aside>
 
-    <!-- Main Content -->
+    <!-- Main content -->
     <main class="admin-main">
-        <!-- Header -->
-        <header class="admin-header">
-            <div class="header-left">
-                <button class="sidebar-toggle" id="sidebarToggle">
-                    <i class="fas fa-bars"></i>
-                </button>
-                <h1 class="page-title" id="pageTitle">Dashboard</h1>
+        <!-- Header y stats (top bar) -->
+        <header class="admin-header flex">
+            <div class="header-left"></div>
+            <div class="header-right"></div>
+            <div class="header-stats flex">
+                <div class="stat-item">
+                    <i class="fas fa-users"></i>
+                    <span id="userTopCounter">0 Usuarios</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-search"></i>
+                    <span id="searchTopCounter">0 Búsquedas hoy</span>
+                </div>
+                <div class="stat-item alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="alertTopCounter">0 Alertas</span>
+                </div>
             </div>
-            <div class="header-right">
-                <div class="header-stats">
-                    <div class="stat-item">
-                        <i class="fas fa-users"></i>
-                        <span id="userTopCounter">7 Usuarios</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-search"></i>
-                        <span>24 Búsquedas hoy</span>
-                    </div>
-                    <div class="stat-item alert">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>3 Alertas</span>
-                    </div>
-                </div>
-                <div class="admin-actions">
-                    <button class="action-btn" title="Notificaciones" id="notificationBtn">
-                        <i class="fas fa-bell"></i>
-                        <span class="notification-badge">5</span>
-                    </button>
-                    <button class="action-btn" title="Configuración rápida" id="quickSettingsBtn">
-                        <i class="fas fa-cog"></i>
-                    </button>
-                </div>
+            <div class="admin-actions">
+                <button id="refreshActivity" title="Refrescar datos">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <!-- Otros botones como exportar/configuración/notificaciones aquí -->
             </div>
         </header>
 
-        <!-- Content Sections -->
+        <!-- Contenido dinámico -->
         <div class="admin-content">
-            <!-- Dashboard Section -->
+            <!-- Sección Dashboard -->
             <section class="content-section active" id="dashboard-section">
-                <!-- Stats Cards -->
-                <div class="stats-grid">
-                    <div class="stat-card glass-card">
-                        <div class="stat-icon users">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="totalUsers">7</div>
-                            <div class="stat-label">Usuarios Registrados</div>
-                            <div class="stat-change positive">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+2 esta semana</span>
-                            </div>
+                <h2 id="pageTitle">Dashboard</h2>
+                <div class="dashboard-widgets">
+                    <div class="widget">
+                        <div class="widget-icon"><i class="fas fa-users"></i></div>
+                        <div>
+                            <span id="totalUsers">0</span>
+                            <div>Usuarios Registrados</div>
+                            <div class="widget-change">+2 esta semana</div>
                         </div>
                     </div>
-
-                    <div class="stat-card glass-card">
-                        <div class="stat-icon searches">
-                            <i class="fas fa-search"></i>
-                        </div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="totalSearches">142</div>
-                            <div class="stat-label">Búsquedas Realizadas</div>
-                            <div class="stat-change positive">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+24 hoy</span>
-                            </div>
+                    <div class="widget">
+                        <div class="widget-icon"><i class="fas fa-search"></i></div>
+                        <div>
+                            <span id="totalSearches">0</span>
+                            <div>Búsquedas Realizadas</div>
+                            <div class="widget-change">+24 hoy</div>
                         </div>
                     </div>
-
-                    <div class="stat-card glass-card">
-                        <div class="stat-icon codes">
-                            <i class="fas fa-key"></i>
-                        </div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="totalCodes">89</div>
-                            <div class="stat-label">Códigos Encontrados</div>
-                            <div class="stat-change positive">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+12 hoy</span>
-                            </div>
+                    <div class="widget">
+                        <div class="widget-icon"><i class="fas fa-key"></i></div>
+                        <div>
+                            <span id="totalCodes">0</span>
+                            <div>Códigos Encontrados</div>
+                            <div class="widget-change">+12 hoy</div>
                         </div>
                     </div>
-
-                    <div class="stat-card glass-card">
-                        <div class="stat-icon alerts">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div class="stat-content">
-                            <div class="stat-number" id="totalAlerts">3</div>
-                            <div class="stat-label">Alertas Activas</div>
-                            <div class="stat-change negative">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <span>Requieren atención</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Activity -->
-                <div class="dashboard-grid">
-                    <div class="dashboard-card glass-card">
-                        <div class="card-header">
-                            <h3>Actividad Reciente</h3>
-                            <button class="card-action" id="refreshActivity">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
-                        </div>
-                        <div class="activity-list" id="recentActivity">
-                            <!-- Activity items will be loaded here -->
-                        </div>
-                    </div>
-
-                    <div class="dashboard-card glass-card">
-                        <div class="card-header">
-                            <h3>Usuarios Activos</h3>
-                            <a href="#" class="card-link" data-section="users">Ver todos</a>
-                        </div>
-                        <div class="users-list" id="activeUsers">
-                            <!-- Active users will be loaded here -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- System Status -->
-                <div class="system-status glass-card">
-                    <div class="card-header">
-                        <h3>Estado del Sistema</h3>
-                        <div class="system-health good">
-                            <i class="fas fa-check-circle"></i>
-                            <span>Sistema Operativo</span>
-                        </div>
-                    </div>
-                    <div class="status-grid">
-                        <div class="status-item">
-                            <div class="status-label">Gmail API</div>
-                            <div class="status-indicator good">
-                                <i class="fas fa-circle"></i>
-                                <span>Conectado</span>
-                            </div>
-                        </div>
-                        <div class="status-item">
-                            <div class="status-label">Google Sheets</div>
-                            <div class="status-indicator good">
-                                <i class="fas fa-circle"></i>
-                                <span>Sincronizado</span>
-                            </div>
-                        </div>
-                        <div class="status-item">
-                            <div class="status-label">WhatsApp API</div>
-                            <div class="status-indicator warning">
-                                <i class="fas fa-circle"></i>
-                                <span>Limitado</span>
-                            </div>
-                        </div>
-                        <div class="status-item">
-                            <div class="status-label">Telegram Bot</div>
-                            <div class="status-indicator good">
-                                <i class="fas fa-circle"></i>
-                                <span>Activo</span>
-                            </div>
+                    <div class="widget">
+                        <div class="widget-icon"><i class="fas fa-shield-alt"></i></div>
+                        <div>
+                            <span id="totalAlerts">0</span>
+                            <div>Alertas Activas</div>
+                            <div class="widget-alert">Requieren atención</div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ⭐ Users Section - SOLO LECTURA -->
+            <!-- Sección Usuarios -->
             <section class="content-section" id="users-section">
-                <div class="section-header">
-                    <h2>Lista de Usuarios</h2>
-                    <div class="section-actions">
-                        <button class="btn-secondary" id="exportUsers">
-                            <i class="fas fa-download"></i>
-                            Exportar Lista
-                        </button>
-                        <button class="btn-secondary" id="refreshUsers">
-                            <i class="fas fa-sync-alt"></i>
-                            Actualizar
-                        </button>
-                    </div>
-                </div>
-
-                <div class="users-table-container glass-card">
-                    <div class="table-filters">
-                        <div class="filter-group">
-                            <input type="text" placeholder="Buscar usuarios..." class="search-input" id="userSearch">
-                            <select class="filter-select" id="statusFilter">
-                                <option value="all">Todos los estados</option>
-                                <option value="active">Activos</option>
-                                <option value="inactive">Inactivos</option>
-                                <option value="blocked">Bloqueados</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="table-wrapper">
-                        <table class="users-table" id="usersTable">
-                            <thead>
-                                <tr>
-                                    <th>Usuario</th>
-                                    <th>Nombre</th>
-                                    <th>Estado</th>
-                                    <th>Última Actividad</th>
-                                    <th>Búsquedas</th>
-                                </tr>
-                            </thead>
-                            <tbody id="usersTableBody">
-                                <!-- Users will be loaded here -->
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="table-footer">
-                        <div class="table-info">
-                            <span id="usersTableInfo">Mostrando 7 usuarios</span>
-                        </div>
-                    </div>
-                </div>
+                <h2>Lista de Usuarios</h2>
+                <input type="text" id="userSearch" placeholder="Buscar usuario">
+                <select id="statusFilter">
+                    <option value="all">Todos</option>
+                    <option value="active">Activos</option>
+                    <option value="inactive">Inactivos</option>
+                    <option value="blocked">Bloqueados</option>
+                </select>
+                <button id="refreshUsers">Refrescar</button>
+                <button id="exportUsers">Exportar</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Última Actividad</th>
+                            <th>Búsquedas</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody"></tbody>
+                </table>
+                <div id="usersTableInfo"></div>
             </section>
 
-            <!-- Monitoring Section -->
-            <section class="content-section" id="monitoring-section">
-                <div class="section-header">
-                    <h2>Monitoreo del Sistema</h2>
-                    <div class="section-actions">
-                        <button class="btn-secondary" id="exportLogs">
-                            <i class="fas fa-download"></i>
-                            Exportar Logs
-                        </button>
-                        <button class="btn-secondary" id="clearLogs">
-                            <i class="fas fa-trash"></i>
-                            Limpiar
-                        </button>
-                    </div>
-                </div>
-
-                <div class="monitoring-grid">
-                    <div class="monitoring-card glass-card">
-                        <div class="card-header">
-                            <h3>Búsquedas en Tiempo Real</h3>
-                            <div class="live-indicator">
-                                <i class="fas fa-circle"></i>
-                                <span>EN VIVO</span>
-                            </div>
-                        </div>
-                        <div class="searches-timeline" id="searchesTimeline">
-                            <!-- Real-time searches -->
-                        </div>
-                    </div>
-
-                    <div class="monitoring-card glass-card">
-                        <div class="card-header">
-                            <h3>Alertas Recientes</h3>
-                            <button class="card-action" id="markAllRead">Marcar como leídas</button>
-                        </div>
-                        <div class="alerts-list" id="alertsList">
-                            <!-- Alerts will be loaded here -->
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Settings Section -->
-            <section class="content-section" id="settings-section">
-                <div class="section-header">
-                    <h2>Configuración del Sistema</h2>
-                    <div class="section-actions">
-                        <button class="btn-secondary" id="backupSettings">
-                            <i class="fas fa-save"></i>
-                            Backup
-                        </button>
-                        <button class="btn-primary" id="saveSettings">
-                            <i class="fas fa-check"></i>
-                            Guardar Cambios
-                        </button>
-                    </div>
-                </div>
-
-                <div class="settings-grid">
-                    <div class="settings-card glass-card">
-                        <div class="card-header">
-                            <h3>APIs y Conectores</h3>
-                        </div>
-                        <div class="settings-content">
-                            <!-- API settings form -->
-                            <div class="setting-group">
-                                <label>Gmail API</label>
-                                <input type="text" placeholder="Client ID" class="setting-input">
-                                <input type="password" placeholder="Client Secret" class="setting-input">
-                            </div>
-                            <div class="setting-group">
-                                <label>Google Sheets ID</label>
-                                <input type="text" placeholder="Sheet ID" class="setting-input">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="settings-card glass-card">
-                        <div class="card-header">
-                            <h3>Notificaciones</h3>
-                        </div>
-                        <div class="settings-content">
-                            <div class="setting-group">
-                                <label>WhatsApp API</label>
-                                <input type="text" placeholder="API Key" class="setting-input">
-                            </div>
-                            <div class="setting-group">
-                                <label>Telegram Bot Token</label>
-                                <input type="password" placeholder="Bot Token" class="setting-input">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Other sections placeholders -->
-            <section class="content-section" id="alerts-section">
-                <div class="section-header">
-                    <h2>Centro de Alertas</h2>
-                </div>
-                <div class="coming-soon glass-card">
-                    <i class="fas fa-bell"></i>
-                    <h3>Centro de Alertas</h3>
-                    <p>Sistema de alertas y notificaciones en desarrollo</p>
-                </div>
-            </section>
-
-            <section class="content-section" id="logs-section">
-                <div class="section-header">
-                    <h2>Logs del Sistema</h2>
-                </div>
-                <div class="coming-soon glass-card">
-                    <i class="fas fa-file-alt"></i>
-                    <h3>Logs del Sistema</h3>
-                    <p>Visualización de logs en desarrollo</p>
-                </div>
-            </section>
+            <!-- Más secciones, monitoreo, configuración, alertas, logs... -->
         </div>
     </main>
 
-    <script src="js/admin-dashboard.js"></script>
-</body>
-</html>
-
-
-mi search.html:
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscar Códigos Disney+ - Shield System</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="css/glassmorphism.css">
-    <link rel="stylesheet" href="css/search.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body class="search-body">
-    <!-- Background -->
-    <div class="background">
-        <div class="gradient-overlay"></div>
-        <div class="animated-particles"></div>
-    </div>
-
-    <!-- Header simple -->
-    <header class="search-header glass-card">
-        <div class="header-content">
-            <div class="logo-section">
-                <i class="fas fa-shield-alt"></i>
-                <span class="logo-text">Disney+ Shield</span>
-            </div>
-            <div class="user-info">
-                <span class="welcome-text">Bienvenido, <strong id="userNameDisplay">Usuario</strong></span>
-                <button class="logout-btn" onclick="doLogout()">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main search container -->
-    <main class="search-container">
-        <div class="search-card glass-card">
-            <!-- Title -->
-            <div class="search-title-section">
-                <div class="title-icon">
-                    <i class="fas fa-search"></i>
-                </div>
-                <h1 class="search-title">Buscar Códigos Disney+</h1>
-                <p class="search-subtitle">Ingresa tu email para encontrar los códigos de verificación</p>
-            </div>
-
-            <!-- Search form -->
-            <form class="search-form" id="searchForm">
-                <div class="search-input-group">
-                    <div class="input-container">
-                        <i class="fas fa-envelope input-icon"></i>
-                        <input 
-                            type="email" 
-                            id="emailInput" 
-                            name="email" 
-                            placeholder="tucorreo@gmail.com"
-                            required
-                            autocomplete="email"
-                        >
-                        <label for="emailInput">Tu Email</label>
-                    </div>
-                    
-                    <button type="submit" class="search-button" id="searchButton">
-                        <span class="button-text">
-                            <i class="fas fa-search"></i>
-                            Buscar Códigos
-                        </span>
-                        <div class="button-loader hidden">
-                            <i class="fas fa-spinner fa-spin"></i>
-                        </div>
-                    </button>
-                </div>
-
-                <!-- Search tips -->
-                <div class="search-tips">
-                    <div class="tip-item">
-                        <i class="fas fa-info-circle"></i>
-                        <span>Buscaremos códigos Disney+ en tu email</span>
-                    </div>
-                    <div class="tip-item">
-                        <i class="fas fa-clock"></i>
-                        <span>Resultados de las últimas 24 horas</span>
-                    </div>
-                </div>
-            </form>
-
-            <!-- Messages -->
-            <div class="message-container">
-                <div class="error-message hidden" id="errorMessage">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span id="errorText"></span>
-                </div>
-
-                <div class="success-message hidden" id="successMessage">
-                    <i class="fas fa-check-circle"></i>
-                    <span id="successText"></span>
-                </div>
-
-                <div class="info-message hidden" id="infoMessage">
-                    <i class="fas fa-info-circle"></i>
-                    <span id="infoText"></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Results section -->
-        <div class="results-section hidden" id="resultsSection">
-            <div class="results-card glass-card">
-                <div class="results-header">
-                    <div class="results-title">
-                        <i class="fas fa-inbox"></i>
-                        <h2>Códigos Encontrados</h2>
-                        <span class="results-count" id="resultsCount">0 resultados</span>
-                    </div>
-                    <div class="results-actions">
-                        <button class="refresh-btn" onclick="refreshResults()">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                        <button class="new-search-btn" onclick="newSearch()">
-                            Nueva Búsqueda
-                        </button>
-                    </div>
-                </div>
-
-                <div class="results-content" id="resultsContent">
-                    <!-- Results will be loaded here -->
-                </div>
-
-                <!-- Pagination -->
-                <div class="pagination-container hidden" id="paginationContainer">
-                    <div class="pagination" id="pagination">
-                        <!-- Pagination will be generated -->
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="search-footer">
-        <div class="footer-content">
-            <p>&copy; 2025 Disney+ Shield System - Protección de Cuentas</p>
-            <div class="footer-links">
-                <a href="#" onclick="showHelp()">Ayuda</a>
-                <a href="#" onclick="showPrivacy()">Privacidad</a>
-            </div>
-        </div>
-    </footer>
-
-    <!-- Help Modal -->
-    <div class="modal-overlay hidden" id="helpModal">
-        <div class="modal-content glass-card">
-            <div class="modal-header">
-                <h3>¿Cómo usar el buscador?</h3>
-                <button class="modal-close" onclick="closeHelp()">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="help-steps">
-                    <div class="help-step">
-                        <div class="step-number">1</div>
-                        <div class="step-content">
-                            <h4>Escribe tu email</h4>
-                            <p>Ingresa la dirección de correo donde recibes los códigos Disney+</p>
-                        </div>
-                    </div>
-                    <div class="help-step">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <h4>Haz clic en "Buscar"</h4>
-                            <p>El sistema buscará automáticamente los códigos en tu email</p>
-                        </div>
-                    </div>
-                    <div class="help-step">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <h4>Ve tus códigos</h4>
-                            <p>Te mostraremos todos los códigos Disney+ encontrados</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="js/search.js"></script>
+    <!-- El JS siempre va aquí -->
+    <script src="admin-dashboard.js"></script>
 </body>
 </html>
