@@ -2127,6 +2127,8 @@ app.get('/api/usuarios-sesiones', async (req, res) => {
     });
 
     // Construye el array final para el frontend
+    const ahora = new Date();
+    
     const respuesta = usuariosResult.rows.map(u => ({
       id: u.id,
       username: u.username,
