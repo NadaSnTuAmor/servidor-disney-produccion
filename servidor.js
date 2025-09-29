@@ -2025,9 +2025,14 @@ app.post('/api/login', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error en bridge login:', error);
+    if (error instanceof Error) {
+      // Para errores SQL, muestra stack y mensaje completo
+      console.error('STACK:', error.stack);
+    }
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      error: error.message
     });
   } finally {
     if (client) {
