@@ -248,12 +248,12 @@ function filterUsers() {
 }
 
 function updateStatsDisplay() {
-    document.getElementById('totalUsers').textContent = systemStats.totalUsers;
-    document.getElementById('totalSearches').textContent = systemStats.totalSearches;
-    document.getElementById('totalCodes').textContent = systemStats.totalCodes;
-    document.getElementById('totalAlerts').textContent = systemStats.totalAlerts;
-    document.getElementById('usersCount').textContent = systemStats.totalUsers;
-    document.getElementById('alertsCount').textContent = systemStats.totalAlerts;
+    if(document.getElementById('totalUsers'))         document.getElementById('totalUsers').textContent = systemStats.totalUsers;
+    if(document.getElementById('totalSearches'))      document.getElementById('totalSearches').textContent = systemStats.totalSearches;
+    if(document.getElementById('totalCodes'))         document.getElementById('totalCodes').textContent = systemStats.totalCodes;
+    if(document.getElementById('totalAlerts'))        document.getElementById('totalAlerts').textContent = systemStats.totalAlerts;
+    if(document.getElementById('usersCount'))         document.getElementById('usersCount').textContent = systemStats.totalUsers;
+    if(document.getElementById('alertsCount'))        document.getElementById('alertsCount').textContent = systemStats.totalAlerts;
 }
 
 function loadDashboardData() {}
