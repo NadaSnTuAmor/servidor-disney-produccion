@@ -2094,6 +2094,63 @@ app.get('/api/usuarios', async (req, res) => {
   }
 });
 
+// Listar usuarios con sesiones activas (no expiradas)
+app.get('/api/usuarios-sesiones', async (req, res) => {
+  let client;
+  try {
+    client = await createConnection();
+
+    // Trae usuarios
+    const usuariosResult = await client.query(`
+      SELECT id, username, rol, estado_seguridad 
+      FROM users
+      ORDER BY id ASC
+    `);
+
+    // Trae sesiones activas para todos los usuarios (las que expiraron no)
+    const sesionesResult = await client.query(`
+      SELECT * FROM sessions 
+      WHERE expires_at > NOW()
+    `);
+
+    // Agrupa las sesiones por user_id en un objeto
+    const sesionesPorUsuario = {};
+    sesionesResult.rows.forEach(s => {
+      if (!sesionesPorUsuario[s.user_id]) sesionesPorUsuario[s.user_id] = [];
+      sesionesPorUsuario[s.user_id].push({
+        id: s.id,
+        ip_address: s.ip_address,
+        user_agent: s.user_agent,
+        created_at: s.created_at,
+        expires_at: s.expires_at
+      });
+    });
+
+    // Construye el array final para el frontend
+    const respuesta = usuariosResult.rows.map(u => ({
+      id: u.id,
+      username: u.username,
+      rol: u.rol ? u.rol.toUpperCase() : "CLIENTE",
+      estado_seguridad: u.estado_seguridad,
+      sessions: sesionesPorUsuario[u.id] || []
+    }));
+
+    res.json({
+      success: true,
+      usuarios: respuesta,
+      total_usuarios: respuesta.length,
+      total_sesiones_activas: sesionesResult.rows.length,
+      hora: new Date().toLocaleString('es-PE')
+    });
+
+  } catch (error) {
+    console.error('❌ Error consultando usuarios-sesiones:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    if (client) { try { await client.end(); } catch (e) {} }
+  }
+});
+
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
   console.log('🚀 ===============================================');
