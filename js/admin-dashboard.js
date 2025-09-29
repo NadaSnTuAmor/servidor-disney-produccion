@@ -23,11 +23,9 @@ let systemStats = {
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     if (!checkAdminAuth()) return;
-
     loadAdminInfo();
     addEventListeners();
     startRealTimeUpdates();
-
     loadUsersData(); // 🔥 Ahora carga usuarios reales al iniciar (sin esperar clicks)
     initializeDashboard();
 });
@@ -178,6 +176,12 @@ async function loadUsersData() {
         const userTopCounter = document.getElementById('userTopCounter');
         if (userTopCounter) userTopCounter.textContent = `${usersData.length} Usuarios`;
         updateStatsDisplay();
+
+        // ⚡ Usuarios activos (nuevo widget)
+        const activeUsers = usersData.filter(user => user.status === 'active');
+        const activeUsersCountDiv = document.getElementById('activeUsersCount');
+        if (activeUsersCountDiv) activeUsersCountDiv.textContent = activeUsers.length;
+        // Si quieres mostrar los nombres o avatares activos en otro widget, puedes hacerlo con el array `activeUsers`
     } catch (err) {
         usersData = [];
         if (tableBody) renderUsersTable(usersData);
