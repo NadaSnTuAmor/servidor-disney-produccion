@@ -1331,7 +1331,6 @@ app.get('/usuarios', async (req, res) => {
       SELECT 
         id,
         username,
-        password_hash,
         estado_seguridad
       FROM users 
       ORDER BY id ASC
