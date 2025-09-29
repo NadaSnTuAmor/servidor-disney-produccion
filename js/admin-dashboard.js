@@ -155,9 +155,7 @@ function loadSectionData(section) {
 async function loadUsersData() {
     const tableBody = document.getElementById('usersTableBody');
     try {
-        const response = await fetch(`${API_BASE_URL}/api/usuarios`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-        });
+       const response = await fetch(`${API_BASE_URL}/api/usuarios`);
         const result = await response.json();
         if (result.success && Array.isArray(result.usuarios)) {
             usersData = result.usuarios;
