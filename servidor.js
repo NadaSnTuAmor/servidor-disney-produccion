@@ -134,14 +134,20 @@ const telegramBot = new TelegramBot(TELEGRAM_CONFIG.BOT_TOKEN);
 
 // FUNCIÓN PARA GENERAR TOKEN
 function generateToken(user) {
+  let expiration;
+  if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
+    expiration = 24 * 60 * 60; // 24 horas en segundos
+  } else {
+    expiration = 20 * 60; // 20 minutos en segundos
+  }
   const payload = {
     user_id: user.id,
     username: user.username,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (20 * 60) // 20 minutos
+    exp: Math.floor(Date.now() / 1000) + expiration
   };
   const token = jwt.sign(payload, JWT_CONFIG.SECRET, { algorithm: JWT_CONFIG.ALGORITHM });
-  console.log(`🔐 Token generado para ${user.username} - Expira en 20 minutos`);
+  console.log(`🔐 Token generado para ${user.username} - Expira en ${expiration / 60 >= 60 ? (expiration / 3600 + ' horas') : (expiration / 60 + ' minutos')}`);
   return token;
 }
 
@@ -765,7 +771,7 @@ app.post('/auth/login', async (req, res) => {
     client = await createConnection();
 
     const result = await client.query(
-      'SELECT id, username, password_hash, estado_seguridad FROM users WHERE username = $1',
+      'SELECT id, username, password_hash, estado_seguridad, rol FROM users WHERE username = $1',
       [username]
     );
 
@@ -803,7 +809,15 @@ app.post('/auth/login', async (req, res) => {
 
     // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
     const createdAt = new Date();
-    const expiresAt = new Date(createdAt.getTime() + 20 * 60 * 1000); // 20 mins adelante
+    
+    let sessionDuration;
+    if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
+      sessionDuration = 24 * 60 * 60 * 1000; // 24 horas en ms
+    } else {
+      sessionDuration = 20 * 60 * 1000;
+    }
+    const expiresAt = new Date(createdAt.getTime() + sessionDuration);
+    
     const userAgent = req.headers['user-agent'] || null;
     const ipAddress = req.ip;
 
@@ -824,9 +838,12 @@ app.post('/auth/login', async (req, res) => {
         id: user.id,
         username: user.username,
         emails: emailsResult.rows.map(row => row.email_address),
-        seguridad: user.estado_seguridad
+        seguridad: user.estado_seguridad,
+        rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"
       },
-      expires_in: '20 minutos',
+      expires_in: (user.rol && user.rol.toUpperCase() === 'ADMIN')
+        ? '24 horas'
+        : '20 minutos',
       token_type: 'Bearer',
       database: 'Supabase PostgreSQL'
     });
@@ -1996,7 +2013,16 @@ app.post('/api/login', async (req, res) => {
 
     // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
     const createdAt = new Date();
-    const expiresAt = new Date(createdAt.getTime() + 20 * 60 * 1000); // 20 mins adelante
+
+    // 💡 MODIFICA LA DURACIÓN SEGÚN ROL
+    let sessionDuration;
+    if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
+      sessionDuration = 24 * 60 * 60 * 1000; // 24 horas en ms
+    } else {
+      sessionDuration = 20 * 60 * 1000; // 20 minutos para todos los demás
+    }
+    const expiresAt = new Date(createdAt.getTime() + sessionDuration);
+
     const userAgent = req.headers['user-agent'] || null;
     const ipAddress = req.ip;
 
@@ -2005,6 +2031,7 @@ app.post('/api/login', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [user.id, token, ipAddress, userAgent, createdAt, expiresAt]
     );
+
     console.log('✅ Sesión registrada en la base de datos');
 
     console.log(`✅ Bridge login exitoso para: ${username}`);
