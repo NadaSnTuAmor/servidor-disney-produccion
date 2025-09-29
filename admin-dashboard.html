@@ -1,354 +1,298 @@
-// Configuration
-const API_BASE_URL = 'https://nadasntuamor.com';
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disney+ Shield - Panel Admin</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/glassmorphism.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Background -->
+    <div class="background">
+        <div class="gradient-overlay"></div>
+        <div class="animated-particles"></div>
+    </div>
 
-// DOM Elements
-const sidebarToggle = document.getElementById('sidebarToggle');
-const sidebar = document.querySelector('.admin-sidebar');
-const mainContent = document.querySelector('.admin-main');
-const navItems = document.querySelectorAll('.nav-item');
-const contentSections = document.querySelectorAll('.content-section');
-const pageTitle = document.getElementById('pageTitle');
-const adminName = document.getElementById('adminName');
+    <!-- Main Dashboard Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-card">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Disney+ Shield</span>
+                </div>
+            </div>
 
-// Data Storage
-let currentSection = 'dashboard';
-let usersData = [];
-let systemStats = {
-    totalUsers: 0,
-    totalSearches: 0,
-    totalCodes: 0,
-    totalAlerts: 0
-};
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item active" data-section="overview">
+                        <i class="fas fa-home"></i>
+                        <span>Inicio</span>
+                    </li>
+                    <li class="nav-item" data-section="monitoring">
+                        <i class="fas fa-eye"></i>
+                        <span>Monitoreo</span>
+                    </li>
+                    <li class="nav-item" data-section="users">
+                        <i class="fas fa-users"></i>
+                        <span>Usuarios</span>
+                    </li>
+                    <li class="nav-item" data-section="blocked">
+                        <i class="fas fa-ban"></i>
+                        <span>Bloqueados</span>
+                    </li>
+                    <li class="nav-item" data-section="settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Configuración</span>
+                    </li>
+                </ul>
+            </nav>
 
-// Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    if (!checkAdminAuth()) return;
-
-    loadAdminInfo();
-    addEventListeners();
-    startRealTimeUpdates();
-
-    loadUsersData(); // 😎 Llama a usuarios REALES al inicio SIEMPRE
-    initializeDashboard();
-});
-
-// Check admin authentication
-function checkAdminAuth() {
-    const token = localStorage.getItem('authToken');
-    const tokenExpiry = localStorage.getItem('tokenExpiry');
-    const userType = localStorage.getItem('userType');
-    const userData = localStorage.getItem('userData');
-    if (!token || !tokenExpiry || !userData || !userType || userType.toUpperCase() !== 'ADMIN') {
-        alert('Acceso denegado. Solo administradores pueden acceder a este panel.');
-        window.location.href = 'index.html';
-        return false;
-    }
-    if (new Date().getTime() >= parseInt(tokenExpiry)) {
-        alert('Sesión expirada. Por favor, inicia sesión nuevamente.');
-        localStorage.clear();
-        window.location.href = 'index.html';
-        return false;
-    }
-    return true;
-}
-
-// Load admin info
-function loadAdminInfo() {
-    const userData = JSON.parse(localStorage.getItem('userData'));
-    if (userData && userData.name) {
-        adminName.textContent = userData.name;
-    }
-}
-
-// Initialize dashboard and view
-function initializeDashboard() {
-    showSection('dashboard');
-    updateStatsDisplay();
-    loadDashboardData();
-}
-
-function addEventListeners() {
-    if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
-    navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const section = item.dataset.section;
-            if (section) {
-                showSection(section);
-                setActiveNavItem(item);
-            }
-        });
-    });
-    document.getElementById('refreshActivity')?.addEventListener('click', refreshActivity);
-    document.getElementById('exportUsers')?.addEventListener('click', exportUsers);
-    document.getElementById('refreshUsers')?.addEventListener('click', refreshUsers);
-    document.getElementById('userSearch')?.addEventListener('input', filterUsers);
-    document.getElementById('statusFilter')?.addEventListener('change', filterUsers);
-    document.querySelectorAll('[data-section].card-link').forEach(link => {
-        link.addEventListener('click', e => {
-            e.preventDefault();
-            const section = link.dataset.section;
-            if (section) {
-                showSection(section);
-                setActiveNavItem(document.querySelector(`.nav-item[data-section="${section}"]`));
-            }
-        });
-    });
-}
-
-function toggleSidebar() {
-    sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('sidebar-collapsed');
-}
-
-function showSection(sectionName) {
-    contentSections.forEach(section => section.classList.remove('active'));
-    const targetSection = document.getElementById(`${sectionName}-section`);
-    if (targetSection) {
-        targetSection.classList.add('active');
-        currentSection = sectionName;
-        updatePageTitle(sectionName);
-        loadSectionData(sectionName);
-    }
-}
-
-function setActiveNavItem(activeItem) {
-    if (!activeItem) return;
-    navItems.forEach(item => item.classList.remove('active'));
-    activeItem.classList.add('active');
-}
-
-function updatePageTitle(section) {
-    const titles = {
-        dashboard: 'Dashboard',
-        users: 'Lista de Usuarios',
-        monitoring: 'Monitoreo del Sistema',
-        settings: 'Configuración',
-        alerts: 'Centro de Alertas',
-        logs: 'Logs del Sistema'
-    };
-    pageTitle.textContent = titles[section] || 'Panel de Administración';
-}
-
-function loadSectionData(section) {
-    switch (section) {
-        case 'dashboard':
-            loadDashboardData();
-            break;
-        case 'users':
-            loadUsersData();
-            break;
-        case 'monitoring':
-            loadMonitoringData();
-            break;
-        case 'settings':
-            loadSettingsData();
-            break;
-        case 'alerts':
-            loadAlertsData();
-            break;
-        case 'logs':
-            loadLogsData();
-            break;
-    }
-}
-
-// USUARIOS REALES + ACTUALIZA DASHBOARD Y TOP BAR
-async function loadUsersData() {
-    const tableBody = document.getElementById('usersTableBody');
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/usuarios`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-        });
-        const result = await response.json();
-        if (result.success && Array.isArray(result.usuarios)) {
-            usersData = result.usuarios;
-        } else if (result.success && Array.isArray(result.users)) {
-            usersData = result.users;
-        } else {
-            usersData = [];
-            showNotification('No se pudo cargar la lista real de usuarios', 'error');
-        }
-        renderUsersTable(usersData);
-
-        // ACTUALIZA TODOS LOS CONTADORES DE USUARIOS
-        systemStats.totalUsers = usersData.length;
-        document.getElementById('usersCount').textContent = usersData.length;
-        document.getElementById('totalUsers').textContent = usersData.length;
-        const userTopCounter = document.getElementById('userTopCounter');
-        if (userTopCounter) userTopCounter.textContent = `${usersData.length} Usuarios`;
-        updateStatsDisplay();
-    } catch (err) {
-        usersData = [];
-        if (tableBody) renderUsersTable(usersData);
-        showNotification('Error al cargar usuarios reales', 'error');
-    }
-}
-
-function renderUsersTable(users) {
-    const tableBody = document.getElementById('usersTableBody');
-    if (!tableBody) return;
-    tableBody.innerHTML = users.map(user => `
-        <tr>
-            <td>
-                <div class="user-cell">
-                    <div class="table-avatar">
-                        ${user.name ? user.name.charAt(0).toUpperCase() : "?"}
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
                     </div>
-                    <div class="table-user-info">
-                        <div class="table-username">${user.name || user.username || "(Sin nombre)"}</div>
-                        <div class="table-user-id">@${user.username || "?"}</div>
+                    <div class="user-details">
+                        <span class="username" id="currentUser">Admin</span>
+                        <span class="role">Administrador</span>
                     </div>
                 </div>
-            </td>
-            <td>${user.name || user.username || ""}</td>
-            <td>
-                <span class="status-badge ${user.status || ""}">
-                    ${getStatusText(user.status)}
-                </span>
-            </td>
-            <td>${user.lastActivity ? formatTimeAgo(user.lastActivity) : ''}</td>
-            <td>
-                <div class="search-count">
-                    <i class="fas fa-search"></i>
-                    <span>${user.searchCount || ""}</span>
+                <button class="logout-btn" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="content-header glass-card">
+                <div class="header-left">
+                    <h1 id="pageTitle">Panel de Control</h1>
+                    <p id="pageSubtitle">Sistema de protección Disney+</p>
                 </div>
-            </td>
-        </tr>
-    `).join('');
-    const tableInfo = document.getElementById('usersTableInfo');
-    if (tableInfo) {
-        const total = users.length;
-        tableInfo.textContent = `Mostrando ${total} usuario${total !== 1 ? 's' : ''}`;
-    }
-}
+                <div class="header-right">
+                    <button class="refresh-btn" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i>
+                        Actualizar
+                    </button>
+                    <div class="notification-icon">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationCount">3</span>
+                    </div>
+                </div>
+            </header>
 
-function filterUsers() {
-    const searchTerm = document.getElementById('userSearch')?.value.toLowerCase() || '';
-    const statusFilter = document.getElementById('statusFilter')?.value || 'all';
-    let filteredUsers = usersData;
-    if (searchTerm) {
-        filteredUsers = filteredUsers.filter(user => 
-            (user.name && user.name.toLowerCase().includes(searchTerm)) ||
-            (user.username && user.username.toLowerCase().includes(searchTerm)) ||
-            (user.email && user.email.toLowerCase().includes(searchTerm))
-        );
-    }
-    if (statusFilter !== 'all') {
-        filteredUsers = filteredUsers.filter(user => user.status === statusFilter);
-    }
-    renderUsersTable(filteredUsers);
-}
+            <!-- Content Sections -->
+            <div class="content-body">
+                <!-- Overview Section -->
+                <section id="overview" class="content-section active">
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card glass-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-shield-check"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="protectedAccounts">0</h3>
+                                <p>Cuentas Protegidas</p>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="threatsBlocked">0</h3>
+                                <p>Amenazas Bloqueadas</p>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="lastCheck">--:--</h3>
+                                <p>Última Verificación</p>
+                            </div>
+                        </div>
+                        <div class="stat-card glass-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <h3 id="systemStatus">Activo</h3>
+                                <p>Estado del Sistema</p>
+                            </div>
+                        </div>
+                    </div>
 
-function updateStatsDisplay() {
-    document.getElementById('totalUsers').textContent = systemStats.totalUsers;
-    document.getElementById('totalSearches').textContent = systemStats.totalSearches;
-    document.getElementById('totalCodes').textContent = systemStats.totalCodes;
-    document.getElementById('totalAlerts').textContent = systemStats.totalAlerts;
-    document.getElementById('usersCount').textContent = systemStats.totalUsers;
-    document.getElementById('alertsCount').textContent = systemStats.totalAlerts;
-}
+                    <!-- Recent Activity -->
+                    <div class="activity-section glass-card">
+                        <h3>Actividad Reciente</h3>
+                        <div class="activity-list" id="activityList">
+                            <div class="activity-item">
+                                <i class="fas fa-shield-alt"></i>
+                                <div class="activity-content">
+                                    <p>Sistema iniciado correctamente</p>
+                                    <span class="activity-time">Hace 5 minutos</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
-function loadDashboardData() {}
-function loadMonitoringData() {}
-function loadSettingsData() {}
-function loadAlertsData() {}
-function loadLogsData() {}
-function refreshActivity() {}
-function exportUsers() {}
-function refreshUsers() {}
-function startRealTimeUpdates() {}
-function getStatusText(status) {
-    const statusTexts = {
-        active: 'Activo',
-        inactive: 'Inactivo',
-        blocked: 'Bloqueado'
-    };
-    return statusTexts[status] || status || '';
-}
-function formatTimeAgo(date) {
-    if (!date) return '';
-    let d = date;
-    if (typeof d === "string" || typeof d === "number") d = new Date(d);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (diffMins < 1) return 'Ahora mismo';
-    if (diffMins < 60) return `Hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-    if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-    if (diffDays < 7) return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
-    return formatDate(d);
-}
-function formatDate(date) {
-    let d = date;
-    if (typeof d === "string" || typeof d === "number") d = new Date(d);
-    return d.toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
-        <span>${message}</span>
-    `;
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${type === 'success' ? 'rgba(16, 185, 129, 0.9)' : type === 'error' ? 'rgba(239, 68, 68, 0.9)' : 'rgba(59, 130, 246, 0.9)'};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        z-index: 10000;
-        font-size: 14px;
-        font-weight: 500;
-        backdrop-filter: blur(10px);
-        animation: slideInRight 0.3s ease-out;
-    `;
-    document.body.appendChild(notification);
-    setTimeout(() => {
-        notification.style.animation = 'slideOutRight 0.3s ease-out';
-        setTimeout(() => {
-            if (document.body.contains(notification)) {
-                document.body.removeChild(notification);
-            }
-        }, 300);
-    }, 3000);
-}
+                <!-- Monitoring Section -->
+                <section id="monitoring" class="content-section">
+                    <div class="monitoring-controls glass-card">
+                        <button class="control-btn" onclick="startMonitoring()">
+                            <i class="fas fa-play"></i>
+                            Iniciar Monitoreo
+                        </button>
+                        <button class="control-btn" onclick="stopMonitoring()">
+                            <i class="fas fa-pause"></i>
+                            Pausar
+                        </button>
+                        <button class="control-btn" onclick="searchEmails()">
+                            <i class="fas fa-search"></i>
+                            Buscar Correos
+                        </button>
+                    </div>
 
-// Global functions
-window.doLogout = function doLogout() {
-    if (confirm('¿Estás seguro de cerrar sesión?')) {
-        localStorage.clear();
-        showNotification('Cerrando sesión...', 'info');
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1000);
-    }
-};
+                    <div class="monitoring-results glass-card">
+                        <h3>Resultados del Monitoreo</h3>
+                        <div class="results-list" id="monitoringResults">
+                            <p class="no-results">No hay resultados disponibles</p>
+                        </div>
+                    </div>
+                </section>
 
-const notificationStyles = document.createElement('style');
-notificationStyles.textContent = `
-    @keyframes slideInRight {
-        from { opacity: 0; transform: translateX(100%); }
-        to { opacity: 1; transform: translateX(0);}
-    }
-    @keyframes slideOutRight {
-        from { opacity: 1; transform: translateX(0);}
-        to { opacity: 0; transform: translateX(100%);}
-    }
-`;
-document.head.appendChild(notificationStyles);
+                <!-- Users Section -->
+                <section id="users" class="content-section">
+                    <div class="users-header">
+                        <div class="search-bar glass-card">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Buscar usuario..." id="userSearch">
+                        </div>
+                        <button class="add-user-btn" onclick="showAddUserModal()">
+                            <i class="fas fa-plus"></i>
+                            Agregar Usuario
+                        </button>
+                    </div>
 
-console.log('🎯 Admin Dashboard JS loaded and ready!');
+                    <div class="users-table glass-card">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Estado</th>
+                                    <th>Última Actividad</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr>
+                                    <td colspan="4">Cargando usuarios...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Blocked Users Section -->
+                <section id="blocked" class="content-section">
+                    <div class="blocked-header">
+                        <h3>Usuarios Bloqueados</h3>
+                        <div class="block-stats">
+                            <span>Total: <strong id="blockedCount">0</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="blocked-list glass-card" id="blockedList">
+                        <p class="no-blocked">No hay usuarios bloqueados</p>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings" class="content-section">
+                    <div class="settings-grid">
+                        <div class="setting-card glass-card">
+                            <h4>Configuración de Monitoreo</h4>
+                            <div class="setting-item">
+                                <label>Intervalo de verificación (minutos)</label>
+                                <input type="number" value="5" min="1" max="60">
+                            </div>
+                            <div class="setting-item">
+                                <label>Alertas WhatsApp</label>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <label>Alertas Telegram</label>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting-card glass-card">
+                            <h4>Seguridad</h4>
+                            <div class="setting-item">
+                                <label>Tiempo de sesión (minutos)</label>
+                                <input type="number" value="20" min="5" max="120">
+                            </div>
+                            <div class="setting-item">
+                                <label>Bloqueo automático</label>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button class="save-settings-btn">
+                            <i class="fas fa-save"></i>
+                            Guardar Configuración
+                        </button>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Procesando...</p>
+        </div>
+    </div>
+
+    <!-- Modal for blocking users -->
+    <div class="modal hidden" id="blockModal">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3>Bloquear Usuario</h3>
+                <button class="close-modal" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="blockUserForm">
+                    <div class="form-group">
+                        <label>Email del usuario</label>
+                        <input type="email" id="blockEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Motivo del bloqueo</label>
+                        <textarea id="blockReason" rows="3" placeholder="Describe el motivo..."></textarea>
