@@ -204,6 +204,9 @@ async function loadActiveSessionsAndUsers() {
         const usuariosActivos = result.usuarios.filter(u => u.sessions.length > 0).length;
         // Número total de sesiones activas
         const numSesionesActivas = result.usuarios.reduce((acc, u) => acc + u.sessions.length, 0);
+        
+        // Aquí llamas la nueva función:
+        updateSessionsTopBar(numSesionesActivas);
 
         // Actualiza widgets/tarjetas (cambia los IDs según lo que haya en tu HTML)
         if(document.getElementById('num-usuarios-activos')) 
@@ -301,6 +304,11 @@ function updateStatsDisplay() {
     if(document.getElementById('totalAlerts'))        document.getElementById('totalAlerts').textContent = systemStats.totalAlerts;
     if(document.getElementById('usersCount'))         document.getElementById('usersCount').textContent = systemStats.totalUsers;
     if(document.getElementById('alertsCount'))        document.getElementById('alertsCount').textContent = systemStats.totalAlerts;
+}
+
+function updateSessionsTopBar(numSesiones) {
+    const el = document.getElementById('sessionsTopCounter');
+    if (el) el.textContent = numSesiones + " Sesiones activas";
 }
 
 function loadDashboardData() {}
