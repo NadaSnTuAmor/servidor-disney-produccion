@@ -192,6 +192,53 @@ async function loadUsersData() {
     }
 }
 
+// --- SESIONES Y USUARIOS ACTIVOS PARA DASHBOARD ADMIN ---
+
+async function loadActiveSessionsAndUsers() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/usuarios-sesiones`);
+        const result = await response.json();
+        if (!result.success) return;
+        
+        // Usuarios activos (con al menos una sesión activa)
+        const usuariosActivos = result.usuarios.filter(u => u.sessions.length > 0).length;
+        // Número total de sesiones activas
+        const numSesionesActivas = result.usuarios.reduce((acc, u) => acc + u.sessions.length, 0);
+
+        // Actualiza widgets/tarjetas (cambia los IDs según lo que haya en tu HTML)
+        if(document.getElementById('num-usuarios-activos')) 
+            document.getElementById('num-usuarios-activos').textContent = usuariosActivos;
+        if(document.getElementById('num-sesiones-activas')) 
+            document.getElementById('num-sesiones-activas').textContent = numSesionesActivas;
+
+        // Llenar detalle en tabla rápida por usuario (opcional)
+        if(document.getElementById('tabla-usuarios-sesiones')) {
+            let html = '';
+            result.usuarios.forEach(u => {
+                html += `<tr>
+                    <td>${u.username}</td>
+                    <td>${u.sessions.length}</td>
+                    <td>${
+                        u.sessions.length === 0
+                        ? ''
+                        : "<ul style='margin:0;padding-left:15px'>" +
+                        u.sessions.map(
+                            s => `<li>${s.ip_address} | ${s.user_agent.slice(0,22)}... | ${new Date(s.created_at).toLocaleString()}</li>`
+                        ).join("") + "</ul>"
+                    }</td>
+                </tr>`;
+            });
+            document.getElementById('tabla-usuarios-sesiones').innerHTML = html;
+        }
+    } catch (e) {
+        console.error('Error cargando sesiones activas:', e);
+    }
+}
+
+// Puedes llamarlo cada 10 segundos para que el dashboard se actualice solo:
+setInterval(loadActiveSessionsAndUsers, 10000);
+document.addEventListener('DOMContentLoaded', loadActiveSessionsAndUsers);
+
 function renderUsersTable(users) {
     const tableBody = document.getElementById('usersTableBody');
     if (!tableBody) return;
