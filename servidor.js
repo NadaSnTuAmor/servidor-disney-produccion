@@ -2132,7 +2132,7 @@ app.get('/api/usuarios-sesiones', async (req, res) => {
       username: u.username,
       rol: u.rol ? u.rol.toUpperCase() : "CLIENTE",
       estado_seguridad: u.estado_seguridad,
-      sessions: sesionesPorUsuario[u.id] || []
+      sessions: (sesionesPorUsuario[u.id] || []).filter(s => new Date(s.expires_at) > ahora)
     }));
 
     res.json({
