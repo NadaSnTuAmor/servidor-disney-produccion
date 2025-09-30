@@ -797,6 +797,11 @@ app.post('/auth/login', async (req, res) => {
         message: 'Usuario o contraseña incorrectos'
       });
     }
+    
+    await client.query(
+      'DELETE FROM sessions WHERE user_id = $1',
+      [user.id]
+    );
 
     const emailsResult = await client.query(`
       SELECT a.email_address 
@@ -2006,6 +2011,11 @@ app.post('/api/login', async (req, res) => {
         message: 'Usuario o contraseña incorrectos'
       });
     }
+
+    await client.query(
+      'DELETE FROM sessions WHERE user_id = $1',
+      [user.id]
+    );
 
     // Obtener emails del usuario
     const emailsResult = await client.query(`
