@@ -864,11 +864,12 @@ app.post('/auth/login', async (req, res) => {
 
     const userAgent = req.headers['user-agent'] || null;
     const ipAddress = req.ip;
+    const localizacion = await obtenerCiudadPorIP(ipAddress);
 
     await client.query(
-      `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [user.id, token, ipAddress, userAgent, createdAt, expiresAt]
+      `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at, localizacion)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [user.id, token, ipAddress, userAgent, createdAt, expiresAt, localizacion]
     );
     console.log('✅ Sesión registrada en la base de datos');
 
@@ -2138,11 +2139,12 @@ app.post('/api/login', async (req, res) => {
 
     const userAgent = req.headers['user-agent'] || null;
     const ipAddress = req.ip;
+    const localizacion = await obtenerCiudadPorIP(ipAddress);
 
     await client.query(
-      `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [user.id, token, ipAddress, userAgent, createdAt, expiresAt]
+      `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at, localizacion)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [user.id, token, ipAddress, userAgent, createdAt, expiresAt, localizacion]
     );
 
     console.log('✅ Sesión registrada en la base de datos');
