@@ -1882,6 +1882,19 @@ app.post('/api/buscar-correos-web', async (req, res) => {
     console.log(`🔐 Usuario autenticado: ${usuario.username} (ID: ${usuario.user_id})`);
     
     client = await createConnection();
+
+    const sesionCheck = await client.query(
+      'SELECT id FROM sessions WHERE token = $1 AND expires_at > NOW()',
+      [token]
+    );
+    if (sesionCheck.rows.length === 0) {
+      console.log('❌ Token JWT no existe o expiró en la BD (busqueda-correos-web)');
+      return res.status(401).json({
+        success: false,
+        error: 'Sesión cerrada o inválida. Inicia sesión nuevamente.',
+        code: 'SESSION_NOT_FOUND'
+      });
+    }
     
     // 🎯 BUSCAR EMAILS ASOCIADOS AL USUARIO (IGUAL QUE GOOGLE SHEETS)
     const emailsPermitidos = await client.query(`
