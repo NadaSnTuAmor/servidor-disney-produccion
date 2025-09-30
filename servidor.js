@@ -2270,7 +2270,7 @@ app.get('/api/usuarios-sesiones', async (req, res) => {
 // 🧹 LIMPIEZA AUTOMÁTICA DE SESIONES EXPIRADAS (cada 10 minutos)
 import cron from 'node-cron'; // Si usas ES Modules, ya tienes esta sintaxis (si no: const cron = require('node-cron');)
 
-cron.schedule('*/10 * * * *', async () => { // Cada 10 minutos
+cron.schedule('0 * * * *', async () => { // Cada hora al minuto 0
   let client;
   try {
     console.log('🧹 Iniciando limpieza automática de sesiones expiradas...');
