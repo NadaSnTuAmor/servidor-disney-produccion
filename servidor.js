@@ -797,7 +797,15 @@ app.post('/auth/login', async (req, res) => {
         message: 'Usuario o contraseña incorrectos'
       });
     }
-    
+
+    // /// CAMBIO: 1 - Busca sesiones previas activas antes de borrar
+    const prevSessionsResult = await client.query(
+      'SELECT ip_address, user_agent, created_at FROM sessions WHERE user_id = $1 AND expires_at > NOW()',
+      [user.id]
+    );
+    const prevSessions = prevSessionsResult.rows;
+
+    // /// CAMBIO: 2 - Elimina TODAS las sesiones previas activas/inactivas de este usuario
     await client.query(
       'DELETE FROM sessions WHERE user_id = $1',
       [user.id]
@@ -814,7 +822,7 @@ app.post('/auth/login', async (req, res) => {
 
     // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
     const createdAt = new Date();
-    
+
     let sessionDuration;
     if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
       sessionDuration = 24 * 60 * 60 * 1000; // 24 horas en ms
@@ -822,7 +830,7 @@ app.post('/auth/login', async (req, res) => {
       sessionDuration = 20 * 60 * 1000;
     }
     const expiresAt = new Date(createdAt.getTime() + sessionDuration);
-    
+
     const userAgent = req.headers['user-agent'] || null;
     const ipAddress = req.ip;
 
@@ -832,6 +840,25 @@ app.post('/auth/login', async (req, res) => {
       [user.id, token, ipAddress, userAgent, createdAt, expiresAt]
     );
     console.log('✅ Sesión registrada en la base de datos');
+
+    // /// CAMBIO: 3 - Si hubo sesión previa activa, manda alerta por WhatsApp SOLO a ti
+    if (prevSessions.length > 0) {
+      const anterior = prevSessions[0];
+      const mensaje = `⚠️ MULTISESIÓN DETECTADA:
+Usuario: ${user.username}
+Rol: ${user.rol ? user.rol.toUpperCase() : "CLIENTE"}
+Estado seguridad: ${user.estado_seguridad}
+Dispositivo anterior: ${anterior.user_agent}
+IP anterior: ${anterior.ip_address}
+Hora inicio anterior: ${anterior.created_at}
+Dispositivo nuevo: ${req.headers['user-agent']}
+IP nuevo: ${req.ip}
+Hora nuevo inicio: ${new Date().toLocaleString('es-PE')}
+Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
+
+      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje);
+      console.log('✅ Alerta WhatsApp multisesión enviada al admin.');
+    }
 
     console.log(`✅ Login JWT exitoso para: ${username}`);
 
@@ -1983,7 +2010,6 @@ app.post('/api/login', async (req, res) => {
 
     client = await createConnection();
 
-    // 👇 AGREGA rol A LA CONSULTA
     const result = await client.query(
       'SELECT id, username, password_hash, estado_seguridad, rol FROM users WHERE username = $1',
       [username]
@@ -2012,6 +2038,14 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
+    // /// CAMBIO: 1 - Buscar sesiones previas activas antes de borrar
+    const prevSessionsResult = await client.query(
+      'SELECT ip_address, user_agent, created_at FROM sessions WHERE user_id = $1 AND expires_at > NOW()',
+      [user.id]
+    );
+    const prevSessions = prevSessionsResult.rows;
+
+    // /// CAMBIO: 2 - Elimina TODAS las sesiones previas activas/inactivas de este usuario
     await client.query(
       'DELETE FROM sessions WHERE user_id = $1',
       [user.id]
@@ -2030,7 +2064,6 @@ app.post('/api/login', async (req, res) => {
     // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
     const createdAt = new Date();
 
-    // 💡 MODIFICA LA DURACIÓN SEGÚN ROL
     let sessionDuration;
     if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
       sessionDuration = 24 * 60 * 60 * 1000; // 24 horas en ms
@@ -2050,9 +2083,27 @@ app.post('/api/login', async (req, res) => {
 
     console.log('✅ Sesión registrada en la base de datos');
 
+    // /// CAMBIO: 3 - Envía alerta si había una sesión previa activa
+    if (prevSessions.length > 0) {
+      const anterior = prevSessions[0];
+      const mensaje = `⚠️ MULTISESIÓN DETECTADA:
+Usuario: ${user.username}
+Rol: ${user.rol ? user.rol.toUpperCase() : "CLIENTE"}
+Estado seguridad: ${user.estado_seguridad}
+Dispositivo anterior: ${anterior.user_agent}
+IP anterior: ${anterior.ip_address}
+Hora inicio anterior: ${anterior.created_at}
+Dispositivo nuevo: ${req.headers['user-agent']}
+IP nuevo: ${req.ip}
+Hora nuevo inicio: ${new Date().toLocaleString('es-PE')}
+Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
+
+      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje);
+      console.log('✅ Alerta WhatsApp multisesión enviada al admin.');
+    }
+
     console.log(`✅ Bridge login exitoso para: ${username}`);
     
-    // 👇 AGREGA rol EN LA RESPUESTA
     res.json({
       success: true,
       message: 'Login exitoso desde frontend',
@@ -2062,7 +2113,7 @@ app.post('/api/login', async (req, res) => {
         username: user.username,
         emails: emailsResult.rows.map(row => row.email_address),
         seguridad: user.estado_seguridad,
-        rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"  // <--- CAMBIO AQUÍ IMPORTANTE
+        rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"
       },
       expires_in: '20 minutos',
       token_type: 'Bearer',
