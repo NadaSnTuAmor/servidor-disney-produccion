@@ -2270,15 +2270,13 @@ app.get('/api/usuarios-sesiones', async (req, res) => {
 // 🧹 LIMPIEZA AUTOMÁTICA DE SESIONES EXPIRADAS (cada 10 minutos)
 import cron from 'node-cron'; // Si usas ES Modules, ya tienes esta sintaxis (si no: const cron = require('node-cron');)
 
-cron.schedule('0 * * * *', async () => {
+cron.schedule('*/10 * * * *', async () => { // Cada 10 minutos
   let client;
   try {
     console.log('🧹 Iniciando limpieza automática de sesiones expiradas...');
     client = await createConnection();
-    const now = new Date().toISOString();
     const result = await client.query(
-      'DELETE FROM sessions WHERE expires_at < $1 RETURNING id',
-      [now]
+      'DELETE FROM sessions WHERE expires_at < NOW() RETURNING id'
     );
     if (result.rowCount > 0) {
       console.log(`✅ Eliminadas ${result.rowCount} sesiones expiradas.`);
@@ -2288,9 +2286,7 @@ cron.schedule('0 * * * *', async () => {
   } catch (error) {
     console.error('❌ Error limpiando sesiones expiradas:', error.message);
   } finally {
-    if (client) {
-      try { await client.end(); } catch (endError) {}
-    }
+    if (client) { try { await client.end(); } catch (endError) {} }
   }
 });
 
