@@ -771,6 +771,20 @@ function authenticateUser(req, res, next) {
   next();
 }
 
+async function obtenerCiudadPorIP(ip) {
+  try {
+    // API gratuita, no necesitas registro
+    const response = await axios.get(`http://ip-api.com/json/${ip}`);
+    if (response.data.status === 'success') {
+      return response.data.city; // Puedes usar también regionName o country
+    } else {
+      return 'Ciudad desconocida';
+    }
+  } catch (error) {
+    return 'Ciudad desconocida';
+  }
+}
+
 // LOGIN CON JWT
 app.post('/auth/login', async (req, res) => {
   let client;
@@ -861,19 +875,39 @@ app.post('/auth/login', async (req, res) => {
     // /// CAMBIO: 3 - Si hubo sesión previa activa, manda alerta por WhatsApp SOLO a ti
     if (prevSessions.length > 0) {
       const anterior = prevSessions[0];
-      const mensaje = `⚠️ MULTISESIÓN DETECTADA:
-Usuario: ${user.username}
-Rol: ${user.rol ? user.rol.toUpperCase() : "CLIENTE"}
-Estado seguridad: ${user.estado_seguridad}
-Dispositivo anterior: ${anterior.user_agent}
-IP anterior: ${anterior.ip_address}
-Hora inicio anterior: ${anterior.created_at}
-Dispositivo nuevo: ${req.headers['user-agent']}
-IP nuevo: ${req.ip}
-Hora nuevo inicio: ${new Date().toLocaleString('es-PE')}
-Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
 
-      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje);
+      // Detectar dispositivo (PC/CEL)
+      function tipoDispositivo(ua) {
+        const text = ua ? ua.toLowerCase() : '';
+        if (text.includes("android") || text.includes("iphone") || text.includes("mobile")) return "CEL";
+        return "PC";
+      }
+
+      // Obtener ciudad para la IP anterior y nueva
+      const ipAnterior = anterior.ip_address;
+      const ipNuevo = req.ip;
+
+      // Espera ciudad de forma asíncrona
+      const ciudadAnterior = await obtenerCiudadPorIP(ipAnterior);
+      const ciudadNuevo = await obtenerCiudadPorIP(ipNuevo);
+
+      // Formatea fecha corta
+      function fechaCorta(fecha) {
+        const d = new Date(fecha);
+        return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()} - ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      }
+
+      // Construye el mensaje bonito
+      const mensaje = `⚠️ *MULTISESIÓN DETECTADA:*\n
+    *Usuario:* ${user.username}\n
+    *Inicio Anterior:* ${tipoDispositivo(anterior.user_agent)} - ${ciudadAnterior} - ${fechaCorta(anterior.created_at)}\n
+    *IP:* ${ipAnterior}\n
+    -------------------------\n
+    *Inicio Nuevo:* ${tipoDispositivo(req.headers['user-agent'])} - ${ciudadNuevo} - ${fechaCorta(new Date())}\n
+    *IP:* ${ipNuevo}\n
+    Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
+
+      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje); // El mismo de antes
       console.log('✅ Alerta WhatsApp multisesión enviada al admin.');
     }
 
@@ -2116,19 +2150,39 @@ app.post('/api/login', async (req, res) => {
     // /// CAMBIO: 3 - Envía alerta si había una sesión previa activa
     if (prevSessions.length > 0) {
       const anterior = prevSessions[0];
-      const mensaje = `⚠️ MULTISESIÓN DETECTADA:
-Usuario: ${user.username}
-Rol: ${user.rol ? user.rol.toUpperCase() : "CLIENTE"}
-Estado seguridad: ${user.estado_seguridad}
-Dispositivo anterior: ${anterior.user_agent}
-IP anterior: ${anterior.ip_address}
-Hora inicio anterior: ${anterior.created_at}
-Dispositivo nuevo: ${req.headers['user-agent']}
-IP nuevo: ${req.ip}
-Hora nuevo inicio: ${new Date().toLocaleString('es-PE')}
-Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
 
-      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje);
+      // Detectar dispositivo (PC/CEL)
+      function tipoDispositivo(ua) {
+        const text = ua ? ua.toLowerCase() : '';
+        if (text.includes("android") || text.includes("iphone") || text.includes("mobile")) return "CEL";
+        return "PC";
+      }
+
+      // Obtener ciudad para la IP anterior y nueva
+      const ipAnterior = anterior.ip_address;
+      const ipNuevo = req.ip;
+
+      // Espera ciudad de forma asíncrona
+      const ciudadAnterior = await obtenerCiudadPorIP(ipAnterior);
+      const ciudadNuevo = await obtenerCiudadPorIP(ipNuevo);
+
+      // Formatea fecha corta
+      function fechaCorta(fecha) {
+        const d = new Date(fecha);
+        return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()} - ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      }
+
+      // Construye el mensaje bonito
+      const mensaje = `⚠️ *MULTISESIÓN DETECTADA:*\n
+    *Usuario:* ${user.username}\n
+    *Inicio Anterior:* ${tipoDispositivo(anterior.user_agent)} - ${ciudadAnterior} - ${fechaCorta(anterior.created_at)}\n
+    *IP:* ${ipAnterior}\n
+    -------------------------\n
+    *Inicio Nuevo:* ${tipoDispositivo(req.headers['user-agent'])} - ${ciudadNuevo} - ${fechaCorta(new Date())}\n
+    *IP:* ${ipNuevo}\n
+    Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
+
+      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje); // El mismo de antes
       console.log('✅ Alerta WhatsApp multisesión enviada al admin.');
     }
 
