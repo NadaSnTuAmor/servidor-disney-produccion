@@ -266,9 +266,14 @@ function validateEmail() {
 // 🔧 HANDLE SEARCH SUCCESS - ACTUALIZADO PARA BACKEND REAL
 function handleSearchSuccess(email, data) {
     currentSearch.email = email;
-    
-    // 🔧 MANEJAR AMBOS FORMATOS: backend real y demo
     currentSearch.results = data.emails || data.correos || [];
+
+    // 🔎 FILTRO por asunto
+    currentSearch.results = currentSearch.results.filter(email =>
+        email.subject === '¿Vas a actualizar tu Hogar de Disney+?' ||
+        email.subject === 'Tu código de acceso único para Disney+'
+    );
+    
     currentSearch.totalResults = data.total || currentSearch.results.length;
     currentSearch.currentPage = 1;
     currentSearch.totalPages = Math.ceil(currentSearch.totalResults / RESULTS_PER_PAGE);
@@ -328,22 +333,37 @@ function displayResults() {
     resultsSection.classList.remove('hidden');
 }
 
-// Create result element
+// ✅ FUNCIÓN SIMPLE Y EXACTA - SOLO PARA CÓDIGOS DISNEY+
 function createResultElement(result, index) {
     const resultDiv = document.createElement('div');
     resultDiv.className = 'result-item';
     resultDiv.setAttribute('data-index', index);
     
-    // Format date
-    const date = new Date(result.date);
-    const formattedDate = formatDate(date);
+    // ✅ FECHA SIMPLE - COMO EN GMAIL
+    let formattedDate = 'Fecha desconocida';
+    if (result.date) {
+        try {
+            const date = new Date(result.date);
+            if (!isNaN(date.getTime())) {
+                formattedDate = formatDate(date);
+            }
+        } catch (error) {
+            console.log('Error parseando fecha:', result.date);
+        }
+    }
     
-    // Extract code (try to find it in different formats)
-    let displayCode = result.code;
-    if (!displayCode) {
-        // Try to extract from snippet or subject
-        const codeMatch = (result.snippet || result.subject || '').match(/[A-Z0-9]{6,}/);
-        displayCode = codeMatch ? codeMatch[0] : 'N/A';
+    // ✅ CÓDIGO DISNEY+ - SOLO BUSCAR NÚMEROS DE 6 DÍGITOS
+    let displayCode = 'Código no encontrado';
+    
+    // El código Disney+ son exactamente 6 dígitos
+    if (result.snippet || result.body || result.content) {
+        const text = result.snippet || result.body || result.content;
+        
+        // Buscar exactamente 6 dígitos seguidos (como 821894, 952700)
+        const codeMatch = text.match(/\b(\d{6})\b/);
+        if (codeMatch) {
+            displayCode = codeMatch[1];
+        }
     }
     
     resultDiv.innerHTML = `
@@ -355,13 +375,13 @@ function createResultElement(result, index) {
             <div class="result-date">${formattedDate}</div>
         </div>
         
-        <div class="result-code" onclick="copyCode(this, '${displayCode}')" title="Click para copiar">
+        <div class="result-code" onclick="copyCode(this, '${displayCode}')" title="Click para copiar código">
             ${displayCode}
             <div class="copy-notification">¡Copiado!</div>
         </div>
     `;
     
-    // Add animation
+    // Animación simple
     resultDiv.style.opacity = '0';
     resultDiv.style.transform = 'translateY(20px)';
     

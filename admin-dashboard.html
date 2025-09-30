@@ -100,15 +100,15 @@
                 <div class="header-stats">
                     <div class="stat-item">
                         <i class="fas fa-users"></i>
-                        <span>7 Usuarios</span>
+                        <span id="userTopCounter">7 Usuarios</span>
                     </div>
                     <div class="stat-item">
                         <i class="fas fa-search"></i>
-                        <span>24 Búsquedas hoy</span>
+                        <span id="searchTopCounter">24 Búsquedas hoy</span>
                     </div>
-                    <div class="stat-item alert">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>3 Alertas</span>
+                    <div class="stat-item" id="sessionsTopBar">
+                        <i class="fas fa-signal"></i>
+                        <span id="sessionsTopCounter">0 Sesiones activas</span>
                     </div>
                 </div>
                 <div class="admin-actions">
@@ -158,15 +158,15 @@
                     </div>
 
                     <div class="stat-card glass-card">
-                        <div class="stat-icon codes">
-                            <i class="fas fa-key"></i>
+                        <div class="stat-icon active-users" style="background: #1976D2;">
+                            <i class="fas fa-user-friends"></i>
                         </div>
                         <div class="stat-content">
-                            <div class="stat-number" id="totalCodes">89</div>
-                            <div class="stat-label">Códigos Encontrados</div>
+                            <div class="stat-number" id="activeUsersCount">0</div> <!-- NUEVO ID -->
+                            <div class="stat-label">Usuarios Activos</div>
                             <div class="stat-change positive">
-                                <i class="fas fa-arrow-up"></i>
-                                <span>+12 hoy</span>
+                                <i class="fas fa-circle"></i>
+                                <span>En línea ahora</span>
                             </div>
                         </div>
                     </div>

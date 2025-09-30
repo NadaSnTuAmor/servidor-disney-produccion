@@ -134,14 +134,20 @@ const telegramBot = new TelegramBot(TELEGRAM_CONFIG.BOT_TOKEN);
 
 // FUNCIÓN PARA GENERAR TOKEN
 function generateToken(user) {
+  let expiration;
+  if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
+    expiration = 24 * 60 * 60; // 24 horas en segundos
+  } else {
+    expiration = 20 * 60; // 20 minutos en segundos
+  }
   const payload = {
     user_id: user.id,
     username: user.username,
     iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + (20 * 60) // 20 minutos
+    exp: Math.floor(Date.now() / 1000) + expiration
   };
   const token = jwt.sign(payload, JWT_CONFIG.SECRET, { algorithm: JWT_CONFIG.ALGORITHM });
-  console.log(`🔐 Token generado para ${user.username} - Expira en 20 minutos`);
+  console.log(`🔐 Token generado para ${user.username} - Expira en ${expiration / 60 >= 60 ? (expiration / 3600 + ' horas') : (expiration / 60 + ' minutos')}`);
   return token;
 }
 
@@ -180,7 +186,7 @@ function refreshToken(oldToken) {
   }
 }
 
-// ✅ ERROR 2 CORREGIDO: MIDDLEWARE JWT CON VERIFICACIÓN DE ESTADO EN BD
+// ✅ MIDDLEWARE JWT CON VERIFICACIÓN DE ESTADO EN BD + SESIÓN EN LA TABLA SESSION
 async function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -196,10 +202,27 @@ async function authenticateJWT(req, res, next) {
   const verification = verifyToken(token);
 
   if (verification.valid) {
-    // 🎯 NUEVA VERIFICACIÓN: Estado actual del usuario en BD
+    // 1. VERIFICAR SESIÓN EN LA TABLA SESSIONS
     let client;
     try {
       client = await createConnection();
+
+      // Verifica que el token exista y no esté expirado en la tabla de sesiones
+      const sesionCheck = await client.query(
+        'SELECT id FROM sessions WHERE token = $1 AND expires_at > NOW()',
+        [token]
+      );
+      if (sesionCheck.rows.length === 0) {
+        // El token fue borrado (por multisesión/logout) o expiró
+        console.log('❌ Token JWT no existe o expiró en la BD');
+        return res.status(401).json({
+          success: false,
+          error: 'Sesión cerrada o inválida. Inicia sesión nuevamente.',
+          code: 'SESSION_NOT_FOUND'
+        });
+      }
+
+      // MANTENEMOS TUS VERIFICACIONES DE USUARIO
       const userCheck = await client.query(
         'SELECT id, username, estado_seguridad FROM users WHERE id = $1',
         [verification.decoded.user_id]
@@ -231,10 +254,10 @@ async function authenticateJWT(req, res, next) {
       next();
 
     } catch (dbError) {
-      console.error('❌ Error verificando estado del usuario:', dbError);
+      console.error('❌ Error verificando estado del usuario/sesión:', dbError);
       return res.status(500).json({
         success: false,
-        error: 'Error verificando estado del usuario',
+        error: 'Error verificando estado del usuario/sesión',
         code: 'DB_ERROR'
       });
     } finally {
@@ -663,12 +686,12 @@ async function buscarCorreosEnGmail(emailBuscado) {
     const gmail = await connectGmail();
 
     const ahora = new Date();
-    const hace24Horas = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
-    const fechaDesde = hace24Horas.toISOString().split('T')[0].replace(/-/g, '/');
+    const hace2Horas = new Date(ahora.getTime() - 2 * 60 * 60 * 1000);
+    const fechaDesde = hace2Horas.toISOString().split('T')[0].replace(/-/g, '/');
     const query = `to:${emailBuscado} after:${fechaDesde}`;
 
     console.log('🔍 Buscando correos con query:', query);
-    console.log('📅 Desde:', hace24Horas.toLocaleString());
+    console.log('📅 Desde:', hace2Horas.toLocaleString());
     console.log('📅 Hasta:', ahora.toLocaleString());
 
     const response = await gmail.users.messages.list({
@@ -678,7 +701,7 @@ async function buscarCorreosEnGmail(emailBuscado) {
     });
     const messages = response.data.messages || [];
     const correos = [];
-    console.log(`📧 Encontrados ${messages.length} mensajes para ${emailBuscado} en las últimas 24h`);
+    console.log(`📧 Encontrados ${messages.length} mensajes para ${emailBuscado} en las últimas 2h`);
 
     for (const message of messages) {
       try {
@@ -765,7 +788,7 @@ app.post('/auth/login', async (req, res) => {
     client = await createConnection();
 
     const result = await client.query(
-      'SELECT id, username, password_hash, estado_seguridad FROM users WHERE username = $1',
+      'SELECT id, username, password_hash, estado_seguridad, rol FROM users WHERE username = $1',
       [username]
     );
 
@@ -792,6 +815,19 @@ app.post('/auth/login', async (req, res) => {
       });
     }
 
+    // /// CAMBIO: 1 - Busca sesiones previas activas antes de borrar
+    const prevSessionsResult = await client.query(
+      'SELECT ip_address, user_agent, created_at FROM sessions WHERE user_id = $1 AND expires_at > NOW()',
+      [user.id]
+    );
+    const prevSessions = prevSessionsResult.rows;
+
+    // /// CAMBIO: 2 - Elimina TODAS las sesiones previas activas/inactivas de este usuario
+    await client.query(
+      'DELETE FROM sessions WHERE user_id = $1',
+      [user.id]
+    );
+
     const emailsResult = await client.query(`
       SELECT a.email_address 
       FROM accounts a 
@@ -800,6 +836,46 @@ app.post('/auth/login', async (req, res) => {
     `, [user.id]);
 
     const token = generateToken(user);
+
+    // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
+    const createdAt = new Date();
+
+    let sessionDuration;
+    if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
+      sessionDuration = 24 * 60 * 60 * 1000; // 24 horas en ms
+    } else {
+      sessionDuration = 20 * 60 * 1000;
+    }
+    const expiresAt = new Date(createdAt.getTime() + sessionDuration);
+
+    const userAgent = req.headers['user-agent'] || null;
+    const ipAddress = req.ip;
+
+    await client.query(
+      `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [user.id, token, ipAddress, userAgent, createdAt, expiresAt]
+    );
+    console.log('✅ Sesión registrada en la base de datos');
+
+    // /// CAMBIO: 3 - Si hubo sesión previa activa, manda alerta por WhatsApp SOLO a ti
+    if (prevSessions.length > 0) {
+      const anterior = prevSessions[0];
+      const mensaje = `⚠️ MULTISESIÓN DETECTADA:
+Usuario: ${user.username}
+Rol: ${user.rol ? user.rol.toUpperCase() : "CLIENTE"}
+Estado seguridad: ${user.estado_seguridad}
+Dispositivo anterior: ${anterior.user_agent}
+IP anterior: ${anterior.ip_address}
+Hora inicio anterior: ${anterior.created_at}
+Dispositivo nuevo: ${req.headers['user-agent']}
+IP nuevo: ${req.ip}
+Hora nuevo inicio: ${new Date().toLocaleString('es-PE')}
+Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
+
+      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje);
+      console.log('✅ Alerta WhatsApp multisesión enviada al admin.');
+    }
 
     console.log(`✅ Login JWT exitoso para: ${username}`);
 
@@ -811,15 +887,22 @@ app.post('/auth/login', async (req, res) => {
         id: user.id,
         username: user.username,
         emails: emailsResult.rows.map(row => row.email_address),
-        seguridad: user.estado_seguridad
+        seguridad: user.estado_seguridad,
+        rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"
       },
-      expires_in: '20 minutos',
+      expires_in: (user.rol && user.rol.toUpperCase() === 'ADMIN')
+        ? '24 horas'
+        : '20 minutos',
       token_type: 'Bearer',
       database: 'Supabase PostgreSQL'
     });
 
   } catch (error) {
-    console.error('❌ Error en login JWT:', error);
+    console.error('❌ Error en bridge login:', error);
+    if (error instanceof Error) {
+      // Para errores SQL, muestra stack y mensaje completo
+      console.error('STACK:', error.stack);
+    }
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
@@ -1297,8 +1380,8 @@ app.get('/usuarios', async (req, res) => {
       SELECT 
         id,
         username,
-        password_hash,
-        estado_seguridad
+        estado_seguridad,
+        rol
       FROM users 
       ORDER BY id ASC
     `);
@@ -1308,7 +1391,13 @@ app.get('/usuarios', async (req, res) => {
     res.json({
       success: true,
       total_usuarios: result.rows.length,
-      usuarios: result.rows,
+      usuarios: result.rows.map(u => ({
+        id: u.id,
+        username: u.username,
+        estado_seguridad: u.estado_seguridad,
+        rol: u.rol ? u.rol.toUpperCase() : "CLIENTE"
+        // NO incluye password_hash ni numero_whatsapp
+      })),
       database: 'Supabase PostgreSQL',
       timestamp: new Date().toLocaleString('es-PE')
     });
@@ -1347,19 +1436,23 @@ app.post('/login', async (req, res) => {
 
     client = await createConnection();
 
+    // Asegúrate de que la columna ROL existe en tu tabla 'users'
     const result = await client.query(
-      'SELECT id, username, password_hash FROM users WHERE username = $1 AND password_hash = $2',
+      'SELECT id, username, password_hash, rol FROM users WHERE username = $1 AND password_hash = $2',
       [usuario, password]
     );
 
     if (result.rows.length > 0) {
+      const user = result.rows[0];
       const token = Buffer.from(`${usuario}:${Date.now()}`).toString('base64');
+      const rol = user.rol ? user.rol.toUpperCase() : "CLIENTE"; // <--- Aquí extraemos el rol
 
       res.json({
         success: true,
         message: 'Login exitoso',
         token: token,
-        username: usuario
+        username: usuario,
+        rol: rol // <--- Este es el campo nuevo para tu frontend
       });
     } else {
       res.status(401).json({
@@ -1935,7 +2028,7 @@ app.post('/api/login', async (req, res) => {
     client = await createConnection();
 
     const result = await client.query(
-      'SELECT id, username, password_hash, estado_seguridad FROM users WHERE username = $1',
+      'SELECT id, username, password_hash, estado_seguridad, rol FROM users WHERE username = $1',
       [username]
     );
 
@@ -1962,6 +2055,19 @@ app.post('/api/login', async (req, res) => {
       });
     }
 
+    // /// CAMBIO: 1 - Buscar sesiones previas activas antes de borrar
+    const prevSessionsResult = await client.query(
+      'SELECT ip_address, user_agent, created_at FROM sessions WHERE user_id = $1 AND expires_at > NOW()',
+      [user.id]
+    );
+    const prevSessions = prevSessionsResult.rows;
+
+    // /// CAMBIO: 2 - Elimina TODAS las sesiones previas activas/inactivas de este usuario
+    await client.query(
+      'DELETE FROM sessions WHERE user_id = $1',
+      [user.id]
+    );
+
     // Obtener emails del usuario
     const emailsResult = await client.query(`
       SELECT a.email_address 
@@ -1971,6 +2077,47 @@ app.post('/api/login', async (req, res) => {
     `, [user.id]);
 
     const token = generateToken(user);
+
+    // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
+    const createdAt = new Date();
+
+    let sessionDuration;
+    if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
+      sessionDuration = 24 * 60 * 60 * 1000; // 24 horas en ms
+    } else {
+      sessionDuration = 20 * 60 * 1000; // 20 minutos para todos los demás
+    }
+    const expiresAt = new Date(createdAt.getTime() + sessionDuration);
+
+    const userAgent = req.headers['user-agent'] || null;
+    const ipAddress = req.ip;
+
+    await client.query(
+      `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [user.id, token, ipAddress, userAgent, createdAt, expiresAt]
+    );
+
+    console.log('✅ Sesión registrada en la base de datos');
+
+    // /// CAMBIO: 3 - Envía alerta si había una sesión previa activa
+    if (prevSessions.length > 0) {
+      const anterior = prevSessions[0];
+      const mensaje = `⚠️ MULTISESIÓN DETECTADA:
+Usuario: ${user.username}
+Rol: ${user.rol ? user.rol.toUpperCase() : "CLIENTE"}
+Estado seguridad: ${user.estado_seguridad}
+Dispositivo anterior: ${anterior.user_agent}
+IP anterior: ${anterior.ip_address}
+Hora inicio anterior: ${anterior.created_at}
+Dispositivo nuevo: ${req.headers['user-agent']}
+IP nuevo: ${req.ip}
+Hora nuevo inicio: ${new Date().toLocaleString('es-PE')}
+Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
+
+      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje);
+      console.log('✅ Alerta WhatsApp multisesión enviada al admin.');
+    }
 
     console.log(`✅ Bridge login exitoso para: ${username}`);
     
@@ -1982,7 +2129,8 @@ app.post('/api/login', async (req, res) => {
         id: user.id,
         username: user.username,
         emails: emailsResult.rows.map(row => row.email_address),
-        seguridad: user.estado_seguridad
+        seguridad: user.estado_seguridad,
+        rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"
       },
       expires_in: '20 minutos',
       token_type: 'Bearer',
@@ -1992,9 +2140,14 @@ app.post('/api/login', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Error en bridge login:', error);
+    if (error instanceof Error) {
+      // Para errores SQL, muestra stack y mensaje completo
+      console.error('STACK:', error.stack);
+    }
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      error: error.message
     });
   } finally {
     if (client) {
@@ -2017,9 +2170,7 @@ app.get('/api/usuarios', async (req, res) => {
       SELECT 
         id,
         username,
-        password_hash,
-        estado_seguridad,
-        numero_whatsapp
+        estado_seguridad
       FROM users 
       ORDER BY id ASC
     `);
@@ -2029,7 +2180,12 @@ app.get('/api/usuarios', async (req, res) => {
     res.json({
       success: true,
       total_usuarios: result.rows.length,
-      usuarios: result.rows,
+      usuarios: result.rows.map(u => ({
+        id: u.id,
+        username: u.username,
+        estado_seguridad: u.estado_seguridad,
+        rol: u.rol ? u.rol.toUpperCase() : "CLIENTE"
+      })),
       database: 'Supabase PostgreSQL',
       timestamp: new Date().toLocaleString('es-PE'),
       api_version: 'Frontend Bridge v3.3'
@@ -2049,6 +2205,88 @@ app.get('/api/usuarios', async (req, res) => {
         console.error('⚠️ Error cerrando conexión:', endError);
       }
     }
+  }
+});
+
+// Listar usuarios con sesiones activas (no expiradas)
+app.get('/api/usuarios-sesiones', async (req, res) => {
+  let client;
+  try {
+    client = await createConnection();
+
+    // Trae usuarios
+    const usuariosResult = await client.query(`
+      SELECT id, username, rol, estado_seguridad 
+      FROM users
+      ORDER BY id ASC
+    `);
+
+    // Trae sesiones activas para todos los usuarios (las que expiraron no)
+    const sesionesResult = await client.query(`
+      SELECT * FROM sessions 
+      WHERE expires_at > NOW()
+    `);
+
+    // Agrupa las sesiones por user_id en un objeto
+    const sesionesPorUsuario = {};
+    sesionesResult.rows.forEach(s => {
+      if (!sesionesPorUsuario[s.user_id]) sesionesPorUsuario[s.user_id] = [];
+      sesionesPorUsuario[s.user_id].push({
+        id: s.id,
+        ip_address: s.ip_address,
+        user_agent: s.user_agent,
+        created_at: s.created_at,
+        expires_at: s.expires_at
+      });
+    });
+
+    // Construye el array final para el frontend
+    const ahora = new Date();
+    
+    const respuesta = usuariosResult.rows.map(u => ({
+      id: u.id,
+      username: u.username,
+      rol: u.rol ? u.rol.toUpperCase() : "CLIENTE",
+      estado_seguridad: u.estado_seguridad,
+      sessions: (sesionesPorUsuario[u.id] || []).filter(s => new Date(s.expires_at) > ahora)
+    }));
+
+    res.json({
+      success: true,
+      usuarios: respuesta,
+      total_usuarios: respuesta.length,
+      total_sesiones_activas: sesionesResult.rows.length,
+      hora: new Date().toLocaleString('es-PE')
+    });
+
+  } catch (error) {
+    console.error('❌ Error consultando usuarios-sesiones:', error);
+    res.status(500).json({ success: false, error: error.message });
+  } finally {
+    if (client) { try { await client.end(); } catch (e) {} }
+  }
+});
+
+// 🧹 LIMPIEZA AUTOMÁTICA DE SESIONES EXPIRADAS (cada 10 minutos)
+import cron from 'node-cron'; // Si usas ES Modules, ya tienes esta sintaxis (si no: const cron = require('node-cron');)
+
+cron.schedule('*/10 * * * *', async () => { // Cada 10 minutos
+  let client;
+  try {
+    console.log('🧹 Iniciando limpieza automática de sesiones expiradas...');
+    client = await createConnection();
+    const result = await client.query(
+      'DELETE FROM sessions WHERE expires_at < NOW() RETURNING id'
+    );
+    if (result.rowCount > 0) {
+      console.log(`✅ Eliminadas ${result.rowCount} sesiones expiradas.`);
+    } else {
+      console.log('✅ No había sesiones expiradas para limpiar.');
+    }
+  } catch (error) {
+    console.error('❌ Error limpiando sesiones expiradas:', error.message);
+  } finally {
+    if (client) { try { await client.end(); } catch (endError) {} }
   }
 });
 

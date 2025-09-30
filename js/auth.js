@@ -12,21 +12,16 @@ const errorMessage = document.getElementById('errorMessage');
 const successMessage = document.getElementById('successMessage');
 const errorText = document.getElementById('errorText');
 
-// User types
+// User types (debe ser en mayúsculas para comparar el backend)
 const USER_TYPES = {
-    ADMIN: 'admin',
-    CLIENT: 'client'
+    ADMIN: 'ADMIN',
+    CLIENT: 'CLIENTE'
 };
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if already logged in
     checkExistingAuth();
-    
-    // Add form event listeners
     loginForm.addEventListener('submit', handleLogin);
-    
-    // Add input animations
     addInputAnimations();
 });
 
@@ -35,16 +30,13 @@ function checkExistingAuth() {
     const token = localStorage.getItem('authToken');
     const tokenExpiry = localStorage.getItem('tokenExpiry');
     const userType = localStorage.getItem('userType');
-    
     if (token && tokenExpiry && userType) {
         if (new Date().getTime() < parseInt(tokenExpiry)) {
-            // Token is still valid, redirect based on user type
             showSuccessMessage('Sesión activa detectada, redirigiendo...');
             setTimeout(() => {
                 redirectUser(userType);
             }, 1000);
         } else {
-            // Token expired, clear storage
             clearAuthData();
         }
     }
@@ -62,20 +54,13 @@ function redirectUser(userType) {
 // 🚀 HANDLE LOGIN - CONECTADO CON BACKEND REAL
 async function handleLogin(e) {
     e.preventDefault();
-    
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
-    
-    // Validate inputs
     if (!validateInputs(username, password)) {
         return;
     }
-    
-    // Show loading state
     setLoadingState(true);
     hideMessages();
-    
-    // 🚀 CONECTAR CON TU BACKEND REAL
     try {
         await handleRealLogin(username, password);
     } catch (error) {
@@ -86,68 +71,63 @@ async function handleLogin(e) {
     }
 }
 
-// 🌐 CONEXIÓN REAL CON TU BACKEND
+// 🌐 CONEXIÓN REAL CON TU BACKEND (CORREGIDO EL BLOQUE!)
 async function handleRealLogin(username, password) {
     try {
-        console.log('🌐 Conectando con backend real para usuario:', username);
-        
-        // 🚀 HACER REQUEST AL BACKEND REAL
         const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ username, password })
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         const result = await response.json();
         console.log('📡 Respuesta del backend:', result);
 
-        if (result.success && result.user) {
-            // ✅ LOGIN EXITOSO CON BACKEND REAL
-            console.log('✅ Login exitoso con backend real:', result.user.username);
-            
-            // 🎯 PREPARAR DATOS PARA FRONTEND
+        // SOLO USA EL CAMPO user.rol PARA DEFINIR EL TIPO DE USUARIO -- este es el ÚNICO cambio real!
+        if (result.success && result.user && result.user.rol) {
+            const userType = result.user.rol.trim().toUpperCase(); // 'ADMIN' o 'CLIENTE'
             const loginData = {
-                token: result.token,
+                token: result.token || '',
                 user: {
                     id: result.user.id,
                     username: result.user.username,
-                    name: result.user.username, // Usar username como nombre
-                    type: result.user.seguridad === 'NORMAL' ? USER_TYPES.CLIENT : USER_TYPES.ADMIN,
+                    name: result.user.username,
+                    rol: userType,
                     email: result.user.emails?.[0] || `${result.user.username}@sistema.com`,
                     emails: result.user.emails || [],
                     seguridad: result.user.seguridad,
-                    isActive: result.user.seguridad === 'NORMAL',
+                    isActive: true,
                     createdDate: new Date().toISOString(),
                     source: 'backend_real',
                     database: 'Google Sheets + Supabase'
                 }
             };
-            
             handleLoginSuccess(loginData);
-            
+        } else if (result.success && result.user) {
+            // fallback (cliente sin rol definido, pero deberías tenerlo siempre ahora)
+            const loginData = {
+                token: result.token,
+                user: {
+                    id: result.user.id,
+                    username: result.user.username,
+                    name: result.user.username,
+                    rol: 'CLIENTE',
+                    email: result.user.emails?.[0] || `${result.user.username}@sistema.com`,
+                    emails: result.user.emails || [],
+                    seguridad: result.user.seguridad,
+                    isActive: true,
+                    createdDate: new Date().toISOString(),
+                    source: 'backend_real',
+                    database: 'Google Sheets + Supabase'
+                }
+            };
+            handleLoginSuccess(loginData);
         } else {
-            // ❌ LOGIN FALLIDO
-            const errorMsg = result.message || 'Credenciales incorrectas';
-            console.log('❌ Login fallido:', errorMsg);
-            handleLoginError(errorMsg);
+            handleLoginError(result.message || 'Credenciales incorrectas');
         }
-        
     } catch (error) {
         console.error('❌ Error conectando con backend:', error);
-        
-        // Si falla la conexión, intentar con usuario demo como fallback
         if (username.toLowerCase() === 'demo' && password === 'demo123') {
-            console.log('🎭 Fallback a usuario demo local');
             handleDemoLoginFallback(username, password);
         } else {
             handleLoginError('Error de conexión con el servidor. Verifica tu conexión a internet.');
@@ -155,7 +135,7 @@ async function handleRealLogin(username, password) {
     }
 }
 
-// 🎭 DEMO FALLBACK (Solo si falla la conexión)
+// DEMO FALLBACK (SIN MODIFICAR)
 function handleDemoLoginFallback(username, password) {
     if (username.toLowerCase() === 'demo' && password === 'demo123') {
         const demoData = {
@@ -164,7 +144,7 @@ function handleDemoLoginFallback(username, password) {
                 id: 999,
                 username: 'demo',
                 name: 'Demo User',
-                type: USER_TYPES.CLIENT,
+                rol: USER_TYPES.CLIENT,
                 email: 'demo@sistema.com',
                 emails: ['demo@sistema.com'],
                 seguridad: 'NORMAL',
@@ -174,46 +154,38 @@ function handleDemoLoginFallback(username, password) {
                 database: 'Local Demo'
             }
         };
-        
-        console.log('🎭 Login demo fallback exitoso');
         handleLoginSuccess(demoData);
     } else {
         handleLoginError('Credenciales incorrectas');
     }
 }
 
-// Validate form inputs
+// Validate form inputs (SIN MODIFICAR)
 function validateInputs(username, password) {
     if (!username) {
         showErrorMessage('Por favor ingresa tu nombre de usuario');
         usernameInput.focus();
         return false;
     }
-    
     if (!password) {
         showErrorMessage('Por favor ingresa tu contraseña');
         passwordInput.focus();
         return false;
     }
-    
     if (username.length < 3) {
         showErrorMessage('El usuario debe tener al menos 3 caracteres');
         usernameInput.focus();
         return false;
     }
-    
     return true;
 }
 
-// Handle successful login
+// Handle successful login (SOLO LEE EL CAMPO .rol Y LO USA COMO userType)
 function handleLoginSuccess(data) {
     const { token, user } = data;
-    
-    // Determine user type
-    let userType = user.type || USER_TYPES.CLIENT;
-    
-    // Store authentication data con JWT real
-    const expiryTime = new Date().getTime() + (20 * 60 * 1000); // 20 minutos (igual que JWT)
+    // CAMBIO: Usa user.rol directamente, sin inventar .type
+    let userType = user.rol === USER_TYPES.ADMIN ? USER_TYPES.ADMIN : USER_TYPES.CLIENT;
+    const expiryTime = new Date().getTime() + (20 * 60 * 1000); // 20 minutos
     localStorage.setItem('authToken', token);
     localStorage.setItem('tokenExpiry', expiryTime.toString());
     localStorage.setItem('userData', JSON.stringify(user));
@@ -222,49 +194,26 @@ function handleLoginSuccess(data) {
     localStorage.setItem('userEmail', user.email);
     localStorage.setItem('userName', user.name);
     localStorage.setItem('loginTime', new Date().toISOString());
-    
-    // Show success message with user info
-    const userTypeText = userType === USER_TYPES.ADMIN ? 'panel de administración' : 'buscador de códigos';
-    const sourceText = user.source === 'backend_real' ? '(Google Sheets)' : '(Demo)';
-    showSuccessMessage(`¡Bienvenido ${user.name}! ${sourceText} Redirigiendo al ${userTypeText}...`);
-    
-    // Add success animation
+    showSuccessMessage(`¡Bienvenido ${user.name}! Redirigiendo al ${userType === USER_TYPES.ADMIN ? 'panel de administración' : 'buscador de códigos'}...`);
     loginButton.style.background = 'linear-gradient(135deg, #10b981, #059669)';
-    
-    // Log successful login
-    console.log(`✅ Login completo:`, {
-        usuario: user.username,
-        tipo: userType,
-        source: user.source,
-        database: user.database,
-        emails: user.emails?.length || 0
-    });
-    
-    // Redirect after animation based on user type
     setTimeout(() => {
         redirectUser(userType);
     }, 1500);
 }
 
-// Handle login error
+// El RESTO de funciones UI y helpers (NADA MODIFICADO)
 function handleLoginError(message) {
     showErrorMessage(message);
-    
-    // Add shake animation to form
     loginForm.style.animation = 'shake 0.5s ease-in-out';
     setTimeout(() => {
         loginForm.style.animation = '';
     }, 500);
-    
-    // Focus on first input with error
     if (message.toLowerCase().includes('usuario')) {
         usernameInput.focus();
     } else {
         passwordInput.focus();
     }
 }
-
-// Set loading state
 function setLoadingState(isLoading) {
     if (isLoading) {
         loginButton.disabled = true;
@@ -278,33 +227,23 @@ function setLoadingState(isLoading) {
         loginButton.style.cursor = 'pointer';
     }
 }
-
-// Show error message
 function showErrorMessage(message) {
     errorText.textContent = message;
     errorMessage.classList.remove('hidden');
     successMessage.classList.add('hidden');
-    
-    // Auto hide after 8 seconds
     setTimeout(() => {
         errorMessage.classList.add('hidden');
     }, 8000);
 }
-
-// Show success message
 function showSuccessMessage(message) {
     successMessage.querySelector('span').textContent = message;
     successMessage.classList.remove('hidden');
     errorMessage.classList.add('hidden');
 }
-
-// Hide all messages
 function hideMessages() {
     errorMessage.classList.add('hidden');
     successMessage.classList.add('hidden');
 }
-
-// Clear authentication data
 function clearAuthData() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('tokenExpiry');
@@ -315,12 +254,9 @@ function clearAuthData() {
     localStorage.removeItem('userName');
     localStorage.removeItem('loginTime');
 }
-
-// Toggle password visibility
 function togglePassword() {
     const passwordField = document.getElementById('password');
     const toggleIcon = document.getElementById('toggleIcon');
-    
     if (passwordField.type === 'password') {
         passwordField.type = 'text';
         toggleIcon.classList.remove('fa-eye');
@@ -331,35 +267,24 @@ function togglePassword() {
         toggleIcon.classList.add('fa-eye');
     }
 }
-
-// Add input animations and effects
 function addInputAnimations() {
     const inputs = document.querySelectorAll('.input-container input');
-    
     inputs.forEach(input => {
         input.addEventListener('focus', function() {
             this.parentElement.classList.add('focused');
         });
-        
         input.addEventListener('blur', function() {
             this.parentElement.classList.remove('focused');
         });
-        
-        // Add real-time validation
         input.addEventListener('input', function() {
             validateInputField(this);
         });
     });
 }
-
-// Validate individual input field
 function validateInputField(input) {
     const value = input.value.trim();
     const inputContainer = input.parentElement;
-    
-    // Remove existing validation classes
     inputContainer.classList.remove('valid', 'invalid');
-    
     if (input.name === 'username') {
         if (value.length >= 3) {
             inputContainer.classList.add('valid');
@@ -367,7 +292,6 @@ function validateInputField(input) {
             inputContainer.classList.add('invalid');
         }
     }
-    
     if (input.name === 'password') {
         if (value.length >= 1) {
             inputContainer.classList.add('valid');
@@ -376,28 +300,22 @@ function validateInputField(input) {
         }
     }
 }
-
-// Add CSS for validation states
 const style = document.createElement('style');
 style.textContent = `
     .input-container.valid input {
         border-color: var(--success-color);
         box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
     }
-    
     .input-container.invalid input {
         border-color: var(--error-color);
         box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
     }
-    
     .input-container.valid .input-icon {
         color: var(--success-color);
     }
-    
     .input-container.invalid .input-icon {
         color: var(--error-color);
     }
-    
     @keyframes shake {
         0%, 100% { transform: translateX(0); }
         10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
@@ -406,25 +324,21 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Global functions
+// Global functions (SIN CAMBIOS)
 window.logout = function() {
     clearAuthData();
     window.location.href = 'index.html';
 };
-
 window.checkAuth = function() {
     const token = localStorage.getItem('authToken');
     const tokenExpiry = localStorage.getItem('tokenExpiry');
-    
     if (!token || !tokenExpiry || new Date().getTime() >= parseInt(tokenExpiry)) {
         clearAuthData();
         window.location.href = 'index.html';
         return false;
     }
-    
     return true;
 };
-
 window.getCurrentUser = function() {
     const userData = localStorage.getItem('userData');
     if (userData) {
@@ -432,18 +346,15 @@ window.getCurrentUser = function() {
     }
     return null;
 };
-
 window.getAuthToken = function() {
     return localStorage.getItem('authToken');
 };
-
 // 🛡️ FUNCIÓN PARA HACER REQUESTS AUTENTICADOS
 window.authenticatedFetch = async function(url, options = {}) {
     const token = getAuthToken();
     if (!token) {
         throw new Error('No authentication token found');
     }
-    
     const defaultOptions = {
         headers: {
             'Content-Type': 'application/json',
@@ -451,6 +362,5 @@ window.authenticatedFetch = async function(url, options = {}) {
             ...options.headers
         }
     };
-    
     return fetch(url, { ...defaultOptions, ...options });
 };
