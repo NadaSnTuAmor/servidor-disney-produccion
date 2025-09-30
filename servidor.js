@@ -186,7 +186,7 @@ function refreshToken(oldToken) {
   }
 }
 
-// ✅ ERROR 2 CORREGIDO: MIDDLEWARE JWT CON VERIFICACIÓN DE ESTADO EN BD
+// ✅ MIDDLEWARE JWT CON VERIFICACIÓN DE ESTADO EN BD + SESIÓN EN LA TABLA SESSION
 async function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -202,10 +202,27 @@ async function authenticateJWT(req, res, next) {
   const verification = verifyToken(token);
 
   if (verification.valid) {
-    // 🎯 NUEVA VERIFICACIÓN: Estado actual del usuario en BD
+    // 1. VERIFICAR SESIÓN EN LA TABLA SESSIONS
     let client;
     try {
       client = await createConnection();
+
+      // Verifica que el token exista y no esté expirado en la tabla de sesiones
+      const sesionCheck = await client.query(
+        'SELECT id FROM sessions WHERE token = $1 AND expires_at > NOW()',
+        [token]
+      );
+      if (sesionCheck.rows.length === 0) {
+        // El token fue borrado (por multisesión/logout) o expiró
+        console.log('❌ Token JWT no existe o expiró en la BD');
+        return res.status(401).json({
+          success: false,
+          error: 'Sesión cerrada o inválida. Inicia sesión nuevamente.',
+          code: 'SESSION_NOT_FOUND'
+        });
+      }
+
+      // MANTENEMOS TUS VERIFICACIONES DE USUARIO
       const userCheck = await client.query(
         'SELECT id, username, estado_seguridad FROM users WHERE id = $1',
         [verification.decoded.user_id]
@@ -237,10 +254,10 @@ async function authenticateJWT(req, res, next) {
       next();
 
     } catch (dbError) {
-      console.error('❌ Error verificando estado del usuario:', dbError);
+      console.error('❌ Error verificando estado del usuario/sesión:', dbError);
       return res.status(500).json({
         success: false,
-        error: 'Error verificando estado del usuario',
+        error: 'Error verificando estado del usuario/sesión',
         code: 'DB_ERROR'
       });
     } finally {
