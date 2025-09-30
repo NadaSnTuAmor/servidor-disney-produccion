@@ -2237,11 +2237,15 @@ app.get('/api/usuarios', async (req, res) => {
 
     const result = await client.query(`
       SELECT 
-        id,
-        username,
-        estado_seguridad
-      FROM users 
-      ORDER BY id ASC
+        u.id,
+        u.username,
+        u.estado_seguridad,
+        u.rol,
+        -- Subconsulta para traer la última sesión de cada usuario
+        (SELECT created_at FROM sessions s WHERE s.user_id = u.id ORDER BY created_at DESC LIMIT 1) AS ultima_sesion,
+        (SELECT localizacion FROM sessions s WHERE s.user_id = u.id ORDER BY created_at DESC LIMIT 1) AS localizacion
+      FROM users u
+      ORDER BY u.id ASC
     `);
 
     console.log(`📋 API usuarios: ${result.rows.length} usuarios enviados al frontend`);
@@ -2253,8 +2257,11 @@ app.get('/api/usuarios', async (req, res) => {
         id: u.id,
         username: u.username,
         estado_seguridad: u.estado_seguridad,
-        rol: u.rol ? u.rol.toUpperCase() : "CLIENTE"
+        rol: u.rol ? u.rol.toUpperCase() : "CLIENTE",
+        ultima_sesion: u.ultima_sesion,       // Nueva propiedad
+        localizacion: u.localizacion          // Nueva propiedad
       })),
+
       database: 'Supabase PostgreSQL',
       timestamp: new Date().toLocaleString('es-PE'),
       api_version: 'Frontend Bridge v3.3'
