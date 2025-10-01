@@ -182,8 +182,8 @@ function validateInputs(username, password) {
 
 // Handle successful login (SOLO LEE EL CAMPO .rol Y LO USA COMO userType)
 function handleLoginSuccess(data) {
-    console.log('DEBUG login data:', data);
     const { token, user } = data;
+    console.log('DEBUG login data:', data);
     let userType = user.rol === USER_TYPES.ADMIN ? USER_TYPES.ADMIN : USER_TYPES.CLIENT;
     localStorage.setItem('authToken', token);
     localStorage.setItem('tokenExpiry', data.expires_at);
