@@ -183,11 +183,9 @@ function validateInputs(username, password) {
 // Handle successful login (SOLO LEE EL CAMPO .rol Y LO USA COMO userType)
 function handleLoginSuccess(data) {
     const { token, user } = data;
-    // CAMBIO: Usa user.rol directamente, sin inventar .type
     let userType = user.rol === USER_TYPES.ADMIN ? USER_TYPES.ADMIN : USER_TYPES.CLIENT;
-    const expiryTime = new Date().getTime() + (20 * 60 * 1000); // 20 minutos
     localStorage.setItem('authToken', token);
-    localStorage.setItem('tokenExpiry', expiryTime.toString());
+    localStorage.setItem('tokenExpiry', data.expires_at);
     localStorage.setItem('userData', JSON.stringify(user));
     localStorage.setItem('userType', userType);
     localStorage.setItem('username', user.username);
