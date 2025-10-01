@@ -258,7 +258,6 @@ function renderUsersTable(users) {
             <td>${user.localizacion || "Desconocida"}</td>
         </tr>
     `).join('');
-}
 
     const tableInfo = document.getElementById('usersTableInfo');
     if (tableInfo) {
