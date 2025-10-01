@@ -1455,7 +1455,7 @@ app.get('/usuarios', async (req, res) => {
 });
 
 // TUS ENDPOINTS EXISTENTES (MANTENIDOS)
-app.post('/login', async (req, res) => {
+//app.post('/login', async (req, res) => {
   console.log('📱 Login desde app:', req.body);
   let client;
   try {
@@ -2059,7 +2059,7 @@ app.get('/api/test', (req, res) => {
 });
 
 // 2. Bridge login endpoint (frontend → backend)
-app.post('/api/login', async (req, res) => {
+//app.post('/api/login', async (req, res) => {
   let client;
   try {
     const { username, password } = req.body;
