@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAdminInfo();
     addEventListeners();
     startRealTimeUpdates();
-    loadUsersData(); // 🔥 Ahora carga usuarios reales al iniciar (sin esperar clicks)
+    loadUsersData();
     initializeDashboard();
 });
 
@@ -151,7 +151,6 @@ function loadSectionData(section) {
     }
 }
 
-// USUARIOS REALES + ACTUALIZA DASHBOARD Y TOP BAR (AQUÍ VA EL DEBUG)
 async function loadUsersData() {
     const tableBody = document.getElementById('usersTableBody');
     try {
@@ -165,14 +164,9 @@ async function loadUsersData() {
             usersData = [];
             showNotification('No se pudo cargar la lista real de usuarios', 'error');
         }
-
-        // DEBUG ADICIONAL: ALERTA Y CONSOLA
-        console.log('DEBUG usersData:', usersData, usersData.length);
-        alert('Usuarios cargados: ' + usersData.length);
-
         renderUsersTable(usersData);
 
-        // ACTUALIZA TODOS LOS CONTADORES DE USUARIOS
+        // Actualiza todos los contadores de usuarios
         systemStats.totalUsers = usersData.length;
         document.getElementById('usersCount').textContent = usersData.length;
         document.getElementById('totalUsers').textContent = usersData.length;
@@ -180,11 +174,10 @@ async function loadUsersData() {
         if (userTopCounter) userTopCounter.textContent = `${usersData.length} Usuarios`;
         updateStatsDisplay();
 
-        // ⚡ Usuarios activos (nuevo widget)
+        // Usuarios activos (nuevo widget)
         const activeUsers = usersData.filter(user => user.status === 'active');
         const activeUsersCountDiv = document.getElementById('activeUsersCount');
         if (activeUsersCountDiv) activeUsersCountDiv.textContent = activeUsers.length;
-        // Si quieres mostrar los nombres o avatares activos en otro widget, puedes hacerlo con el array `activeUsers`
     } catch (err) {
         usersData = [];
         if (tableBody) renderUsersTable(usersData);
@@ -192,93 +185,31 @@ async function loadUsersData() {
     }
 }
 
-// --- SESIONES Y USUARIOS ACTIVOS PARA DASHBOARD ADMIN ---
-
-async function loadActiveSessionsAndUsers() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/usuarios-sesiones`);
-        const result = await response.json();
-        if (!result.success) return;
-        
-        // Usuarios activos (con al menos una sesión activa)
-        const usuariosActivos = result.usuarios.filter(u => u.sessions.length > 0).length;
-        // Número total de sesiones activas
-        const numSesionesActivas = result.usuarios.reduce((acc, u) => acc + u.sessions.length, 0);
-        
-        // Aquí llamas la nueva función:
-        updateSessionsTopBar(numSesionesActivas);
-
-        // Actualiza widgets/tarjetas (cambia los IDs según lo que haya en tu HTML)
-        if(document.getElementById('num-usuarios-activos')) 
-            document.getElementById('num-usuarios-activos').textContent = usuariosActivos;
-        if(document.getElementById('num-sesiones-activas')) 
-            document.getElementById('num-sesiones-activas').textContent = numSesionesActivas;
-
-        // Llenar detalle en tabla rápida por usuario (opcional)
-        if(document.getElementById('tabla-usuarios-sesiones')) {
-            let html = '';
-            result.usuarios.forEach(u => {
-                html += `<tr>
-                    <td>${u.username}</td>
-                    <td>${u.sessions.length}</td>
-                    <td>${
-                        u.sessions.length === 0
-                        ? ''
-                        : "<ul style='margin:0;padding-left:15px'>" +
-                        u.sessions.map(
-                            s => `<li>${s.ip_address} | ${s.user_agent.slice(0,22)}... | ${new Date(s.created_at).toLocaleString()}</li>`
-                        ).join("") + "</ul>"
-                    }</td>
-                </tr>`;
-            });
-            document.getElementById('tabla-usuarios-sesiones').innerHTML = html;
-        }
-    } catch (e) {
-        console.error('Error cargando sesiones activas:', e);
-    }
-}
-
-// Puedes llamarlo cada 10 segundos para que el dashboard se actualice solo:
-setInterval(loadActiveSessionsAndUsers, 10000);
-document.addEventListener('DOMContentLoaded', loadActiveSessionsAndUsers);
-
+// --- TABLA SÓLO 5 COLUMNAS ---
 function renderUsersTable(users) {
     const tableBody = document.getElementById('usersTableBody');
     if (!tableBody) return;
     tableBody.innerHTML = users.map(user => `
         <tr>
-            <td>
-                <div class="user-cell">
-                    <div class="table-avatar">
-                        ${user.name ? user.name.charAt(0).toUpperCase() : "?"}
-                    </div>
-                    <div class="table-user-info">
-                        <div class="table-username">${user.name || user.username || "(Sin nombre)"}</div>
-                        <div class="table-user-id">@${user.username || "?"}</div>
-                    </div>
-                </div>
-            </td>
+            <td>${user.username || ""}</td>
             <td>${user.name || user.username || ""}</td>
             <td>
                 <span class="status-badge ${user.status || ""}">
                     ${getStatusText(user.status)}
                 </span>
             </td>
-            <td>${user.lastActivity ? formatTimeAgo(user.lastActivity) : ''}</td>
-            <td>
-                <div class="search-count">
-                    <i class="fas fa-search"></i>
-                    <span>${user.searchCount || ""}</span>
-                </div>
-            </td>
+            <td>${user.ultima_sesion ? formatDate(user.ultima_sesion) : ""}</td>
+            <td>${user.localizacion || "Desconocida"}</td>
         </tr>
     `).join('');
+
     const tableInfo = document.getElementById('usersTableInfo');
     if (tableInfo) {
         const total = users.length;
         tableInfo.textContent = `Mostrando ${total} usuario${total !== 1 ? 's' : ''}`;
     }
 }
+// ---------------------------------
 
 function filterUsers() {
     const searchTerm = document.getElementById('userSearch')?.value.toLowerCase() || '';
@@ -328,21 +259,6 @@ function getStatusText(status) {
     };
     return statusTexts[status] || status || '';
 }
-function formatTimeAgo(date) {
-    if (!date) return '';
-    let d = date;
-    if (typeof d === "string" || typeof d === "number") d = new Date(d);
-    const now = new Date();
-    const diffMs = now - d;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (diffMins < 1) return 'Ahora mismo';
-    if (diffMins < 60) return `Hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`;
-    if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
-    if (diffDays < 7) return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`;
-    return formatDate(d);
-}
 function formatDate(date) {
     let d = date;
     if (typeof d === "string" || typeof d === "number") d = new Date(d);
@@ -389,7 +305,6 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
-// Global functions
 window.doLogout = function doLogout() {
     if (confirm('¿Estás seguro de cerrar sesión?')) {
         localStorage.clear();
