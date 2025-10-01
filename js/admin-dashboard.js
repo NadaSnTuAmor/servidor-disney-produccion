@@ -264,13 +264,8 @@ function renderUsersTable(users) {
                     ${getStatusText(user.status)}
                 </span>
             </td>
-            <td>${user.lastActivity ? formatTimeAgo(user.lastActivity) : ''}</td>
-            <td>
-                <div class="search-count">
-                    <i class="fas fa-search"></i>
-                    <span>${user.searchCount || ""}</span>
-                </div>
-            </td>
+            <td>${user.ultima_sesion ? formatDate(user.ultima_sesion) : ''}</td>
+            <td>${user.localizacion || "Desconocida"}</td>
         </tr>
     `).join('');
     const tableInfo = document.getElementById('usersTableInfo');
