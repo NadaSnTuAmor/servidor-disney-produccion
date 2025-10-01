@@ -74,6 +74,7 @@ async function handleLogin(e) {
 // 🌐 CONEXIÓN REAL CON TU BACKEND (CORREGIDO EL BLOQUE!)
 async function handleRealLogin(username, password) {
     try {
+        console.log("VOY A ENVIAR FETCH");
         const response = await fetch(`${API_BASE_URL}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
