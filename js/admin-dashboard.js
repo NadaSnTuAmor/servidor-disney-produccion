@@ -247,15 +247,30 @@ function renderUsersTable(users) {
     if (!tableBody) return;
     tableBody.innerHTML = users.map(user => `
         <tr>
-            <td>${user.username || ""}</td>
+            <td>
+                <div class="user-cell">
+                    <div class="table-avatar">
+                        ${user.name ? user.name.charAt(0).toUpperCase() : "?"}
+                    </div>
+                    <div class="table-user-info">
+                        <div class="table-username">${user.name || user.username || "(Sin nombre)"}</div>
+                        <div class="table-user-id">@${user.username || "?"}</div>
+                    </div>
+                </div>
+            </td>
             <td>${user.name || user.username || ""}</td>
             <td>
                 <span class="status-badge ${user.status || ""}">
                     ${getStatusText(user.status)}
                 </span>
             </td>
-            <td>${user.ultima_sesion ? formatDate(user.ultima_sesion) : ""}</td>
-            <td>${user.localizacion || "Desconocida"}</td>
+            <td>${user.lastActivity ? formatTimeAgo(user.lastActivity) : ''}</td>
+            <td>
+                <div class="search-count">
+                    <i class="fas fa-search"></i>
+                    <span>${user.searchCount || ""}</span>
+                </div>
+            </td>
         </tr>
     `).join('');
     const tableInfo = document.getElementById('usersTableInfo');
