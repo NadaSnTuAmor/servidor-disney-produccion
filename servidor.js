@@ -1455,7 +1455,8 @@ app.get('/usuarios', async (req, res) => {
 });
 
 // TUS ENDPOINTS EXISTENTES (MANTENIDOS)
-//app.post('/login', async (req, res) => {
+/*
+app.post('/login', async (req, res) => {
   console.log('📱 Login desde app:', req.body);
   let client;
   try {
@@ -1512,6 +1513,7 @@ app.get('/usuarios', async (req, res) => {
     }
   }
 });
+*/
 
 // ENDPOINT BUSCAR CORREOS (CON JWT) - ACTUALIZADO CON VIGILANCIA INTELIGENTE
 // ENDPOINT BUSCAR CORREOS CON VALIDACIÓN DE SEGURIDAD UNIVERSAL
@@ -2059,7 +2061,8 @@ app.get('/api/test', (req, res) => {
 });
 
 // 2. Bridge login endpoint (frontend → backend)
-//app.post('/api/login', async (req, res) => {
+/*
+app.post('/api/login', async (req, res) => {
   let client;
   try {
     const { username, password } = req.body;
@@ -2228,6 +2231,7 @@ app.get('/api/test', (req, res) => {
     }
   }
 });
+*/
 
 // 3. API usuarios para Google Sheets compatibility
 app.get('/api/usuarios', async (req, res) => {
