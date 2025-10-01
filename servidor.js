@@ -925,7 +925,6 @@ app.post('/auth/login', async (req, res) => {
         seguridad: user.estado_seguridad,
         rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"
       },
-      expires_in: (user.rol && user.rol.toUpperCase() === 'ADMIN')
       expires_in: sessionDuration,
       expires_at: expiresAt.getTime(),
       token_type: 'Bearer',
@@ -970,7 +969,7 @@ app.post('/auth/refresh', (req, res) => {
       success: true,
       message: 'Token renovado exitosamente',
       token: refreshResult.token,
-      expires_in: '20 minutos',
+      expires_in: 20 * 60 * 1000,
       user: {
         id: refreshResult.user.user_id,
         username: refreshResult.user.username
