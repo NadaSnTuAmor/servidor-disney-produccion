@@ -863,7 +863,7 @@ app.post('/auth/login', async (req, res) => {
     const expiresAt = new Date(createdAt.getTime() + sessionDuration);
 
     const userAgent = req.headers['user-agent'] || null;
-    const ipAddress = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection.remoteAddress || req.ip;
+    const ipAddress = req.headers['x-forwarded-for'] || req.ip;
     const localizacion = await obtenerCiudadPorIP(ipAddress);
 
     await client.query(
@@ -2138,7 +2138,7 @@ app.post('/api/login', async (req, res) => {
     const expiresAt = new Date(createdAt.getTime() + sessionDuration);
 
     const userAgent = req.headers['user-agent'] || null;
-    const ipAddress = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection.remoteAddress || req.ip;
+    const ipAddress = req.headers['x-forwarded-for'] || req.ip;
     const localizacion = await obtenerCiudadPorIP(ipAddress);
 
     await client.query(
