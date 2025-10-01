@@ -187,7 +187,7 @@ function handleLoginSuccess(data) {
     const { token, user } = data;
     let userType = user.rol === USER_TYPES.ADMIN ? USER_TYPES.ADMIN : USER_TYPES.CLIENT;
     localStorage.setItem('authToken', token);
-    localStorage.setItem('tokenExpiry', data.expires_at);
+    localStorage.setItem('tokenExpiry', String(Date.now() + 86400000));
     localStorage.setItem('userData', JSON.stringify(user));
     localStorage.setItem('userType', userType);
     localStorage.setItem('username', user.username);
