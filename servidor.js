@@ -926,8 +926,8 @@ app.post('/auth/login', async (req, res) => {
         rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"
       },
       expires_in: (user.rol && user.rol.toUpperCase() === 'ADMIN')
-        ? '24 horas'
-        : '20 minutos',
+      expires_in: sessionDuration,
+      expires_at: expiresAt.getTime(),
       token_type: 'Bearer',
       database: 'Supabase PostgreSQL'
     });
@@ -2201,7 +2201,8 @@ app.post('/api/login', async (req, res) => {
         seguridad: user.estado_seguridad,
         rol: user.rol ? user.rol.toUpperCase() : "CLIENTE"
       },
-      expires_in: '20 minutos',
+      expires_in: sessionDuration,
+      expires_at: expiresAt.getTime(),
       token_type: 'Bearer',
       bridge: 'Frontend → JWT Auth',
       database: 'Supabase PostgreSQL'
