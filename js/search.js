@@ -1,3 +1,14 @@
+function autoLogoutWhenExpired() {
+    const expiresAt = parseInt(localStorage.getItem('tokenExpiry') || '0');
+    const token = localStorage.getItem('authToken');
+    if (!token || Date.now() > expiresAt) {
+        localStorage.clear();  // Borra TODO, para forzar login limpio
+        window.location.href = 'index.html'; // O la ruta de tu login
+    }
+}
+autoLogoutWhenExpired();
+setInterval(autoLogoutWhenExpired, 60 * 1000); // Cada minuto
+
 // Configuration - BACKEND CONECTADO
 const API_BASE_URL = 'https://nadasntuamor.com'; // ✅ TU URL
 
