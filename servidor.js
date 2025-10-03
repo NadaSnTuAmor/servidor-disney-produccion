@@ -5,7 +5,7 @@ dotenv.config();
 
 import express from 'express';
 import pkg from 'pg';
-const { Client } = pkg;
+const { Pool } = pkg;
 import cors from 'cors';
 import { google } from 'googleapis';
 import fs from 'fs';
@@ -42,6 +42,17 @@ const DB_CONFIG = {
   statement_timeout: 15000,   // 15 segundos timeout para statements
   query_timeout: 15000,       // 15 segundos timeout para queries
 };
+
+const pool = new Pool(DB_CONFIG);
+
+// Función genérica para queries (la usarás en endpoints)
+async function runQuery(query, params) {
+  try {
+    return await pool.query(query, params);
+  } catch (error) {
+    throw error;
+  }
+}
 
 // 🚀 FUNCIÓN MEJORADA CON RETRY LOGIC Y EXPONENTIAL BACKOFF
 async function createConnection() {
@@ -785,9 +796,8 @@ async function obtenerCiudadPorIP(ip) {
   }
 }
 
-// LOGIN CON JWT
+// LOGIN CON JWT usando pool
 app.post('/auth/login', async (req, res) => {
-  let client;
   try {
     const { username, password } = req.body;
     console.log('🔐 Intento de login JWT:', username);
@@ -799,9 +809,8 @@ app.post('/auth/login', async (req, res) => {
       });
     }
 
-    client = await createConnection();
-
-    const result = await client.query(
+    // --- Usar runQuery en vez de client ---
+    const result = await runQuery(
       'SELECT id, username, password_hash, estado_seguridad, rol FROM users WHERE username = $1',
       [username]
     );
@@ -829,20 +838,20 @@ app.post('/auth/login', async (req, res) => {
       });
     }
 
-    // /// CAMBIO: 1 - Busca sesiones previas activas antes de borrar
-    const prevSessionsResult = await client.query(
+    // Buscar sesiones previas activas antes de borrar
+    const prevSessionsResult = await runQuery(
       'SELECT ip_address, user_agent, created_at FROM sessions WHERE user_id = $1 AND expires_at > NOW()',
       [user.id]
     );
     const prevSessions = prevSessionsResult.rows;
 
-    // /// CAMBIO: 2 - Elimina TODAS las sesiones previas activas/inactivas de este usuario
-    await client.query(
+    // Elimina TODAS las sesiones previas activas/inactivas
+    await runQuery(
       'DELETE FROM sessions WHERE user_id = $1',
       [user.id]
     );
 
-    const emailsResult = await client.query(`
+    const emailsResult = await runQuery(`
       SELECT a.email_address 
       FROM accounts a 
       JOIN user_accounts ua ON a.id = ua.account_id 
@@ -851,12 +860,11 @@ app.post('/auth/login', async (req, res) => {
 
     const token = generateToken(user);
 
-    // === BLOQUE NUEVO: GUARDAR SESIÓN en Supabase ===
+    // Guardar la nueva sesión
     const createdAt = new Date();
-
     let sessionDuration;
     if (user.rol && user.rol.toUpperCase() === 'ADMIN') {
-      sessionDuration = 24 * 60 * 60 * 1000; // 24 horas en ms
+      sessionDuration = 24 * 60 * 60 * 1000;
     } else {
       sessionDuration = 20 * 60 * 1000;
     }
@@ -866,14 +874,14 @@ app.post('/auth/login', async (req, res) => {
     const ipAddress = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection.remoteAddress || req.ip;
     const localizacion = await obtenerCiudadPorIP(ipAddress);
 
-    await client.query(
+    await runQuery(
       `INSERT INTO sessions (user_id, token, ip_address, user_agent, created_at, expires_at, localizacion)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [user.id, token, ipAddress, userAgent, createdAt, expiresAt, localizacion]
     );
     console.log('✅ Sesión registrada en la base de datos');
 
-    // /// CAMBIO: 3 - Si hubo sesión previa activa, manda alerta por WhatsApp SOLO a ti
+    // Si hubo sesión previa activa, manda alerta
     if (prevSessions.length > 0) {
       const anterior = prevSessions[0];
 
@@ -908,7 +916,7 @@ app.post('/auth/login', async (req, res) => {
     *IP:* ${ipNuevo}\n
     Acción: Sesión anterior CERRADA (solo una sesión permitida)`;
 
-      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje); // El mismo de antes
+      await enviarAlertaWhatsApp(ADMIN_CONFIG.numeroWhatsApp, mensaje);
       console.log('✅ Alerta WhatsApp multisesión enviada al admin.');
     }
 
@@ -934,7 +942,6 @@ app.post('/auth/login', async (req, res) => {
   } catch (error) {
     console.error('❌ Error en bridge login:', error);
     if (error instanceof Error) {
-      // Para errores SQL, muestra stack y mensaje completo
       console.error('STACK:', error.stack);
     }
     res.status(500).json({
@@ -942,15 +949,6 @@ app.post('/auth/login', async (req, res) => {
       message: 'Error interno del servidor',
       error: error.message
     });
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-        console.log('🔌 Conexión cerrada correctamente');
-      } catch (endError) {
-        console.error('⚠️ Error cerrando conexión:', endError);
-      }
-    }
   }
 });
 
@@ -1406,11 +1404,8 @@ app.post('/sync-user', async (req, res) => {
 
 // ENDPOINT PARA LISTAR TODOS LOS USUARIOS
 app.get('/usuarios', async (req, res) => {
-  let client;
   try {
-    client = await createConnection();
-
-    const result = await client.query(`
+    const result = await runQuery(`
       SELECT 
         id,
         username,
@@ -1442,15 +1437,12 @@ app.get('/usuarios', async (req, res) => {
       success: false,
       error: error.message 
     });
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-        console.log('🔌 Conexión cerrada correctamente');
-      } catch (endError) {
-        console.error('⚠️ Error cerrando conexión:', endError);
-      }
-    }
+  } catch (error) {
+    console.error('❌ Error obteniendo usuarios:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
   }
 });
 
@@ -1516,11 +1508,10 @@ app.post('/login', async (req, res) => {
 */
 
 // ENDPOINT BUSCAR CORREOS (CON JWT) - ACTUALIZADO CON VIGILANCIA INTELIGENTE
-// ENDPOINT BUSCAR CORREOS CON VALIDACIÓN DE SEGURIDAD UNIVERSAL
+// ENDPOINT BUSCAR CORREOS CON VALIDACIÓN DE SEGURIDAD UNIVERSAL usando pool
 app.post('/buscar-correos', authenticateJWT, async (req, res) => {
   console.log(`🔍 ${req.user.username} solicita búsqueda:`, req.body);
   
-  let client;
   try {
     const { email_busqueda } = req.body;
     
@@ -1532,12 +1523,10 @@ app.post('/buscar-correos', authenticateJWT, async (req, res) => {
     }
     
     // 🛡️ VALIDACIÓN UNIVERSAL DE SEGURIDAD
-    client = await createConnection();
-    
     console.log(`🔐 Verificando permisos para usuario ID: ${req.user.user_id} (${req.user.username})`);
     
-    // Obtener TODOS los emails asociados al usuario autenticado
-    const emailsPermitidos = await client.query(`
+    // Obtener TODOS los emails asociados al usuario autenticado (con pool/runQuery)
+    const emailsPermitidos = await runQuery(`
       SELECT a.email_address 
       FROM accounts a 
       JOIN user_accounts ua ON a.id = ua.account_id 
@@ -1590,15 +1579,6 @@ app.post('/buscar-correos', authenticateJWT, async (req, res) => {
       success: false,
       message: 'Error interno del servidor'
     });
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-        console.log('🔌 Conexión cerrada correctamente');
-      } catch (endError) {
-        console.error('⚠️ Error cerrando conexión:', endError);
-      }
-    }
   }
 });
 
@@ -1631,9 +1611,8 @@ app.get('/api/watchlist', authenticateJWT, (req, res) => {
   });
 });
 
-// ENDPOINTS DE SEGURIDAD EXISTENTES
+// ENDPOINTS DE SEGURIDAD EXISTENTES usando pool
 app.post('/bloquear-usuario', async (req, res) => {
-  let client;
   try {
     const { id, usuario, accion, numeroWhatsApp } = req.body;
 
@@ -1646,9 +1625,8 @@ app.post('/bloquear-usuario', async (req, res) => {
       });
     }
 
-    client = await createConnection();
-
-    const result = await client.query(
+    // Bloquea al usuario usando pool
+    const result = await runQuery(
       'UPDATE users SET estado_seguridad = $1 WHERE id = $2',
       ['BLOQUEADO', id]
     );
@@ -1684,20 +1662,10 @@ app.post('/bloquear-usuario', async (req, res) => {
       success: false,
       error: error.message
     });
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-        console.log('🔌 Conexión cerrada correctamente');
-      } catch (endError) {
-        console.error('⚠️ Error cerrando conexión:', endError);
-      }
-    }
   }
 });
 
 app.post('/reactivar-usuario', async (req, res) => {
-  let client;
   try {
     const { id, usuario, accion, numeroWhatsApp } = req.body;
 
@@ -1710,9 +1678,8 @@ app.post('/reactivar-usuario', async (req, res) => {
       });
     }
 
-    client = await createConnection();
-
-    const result = await client.query(
+    // Reactiva al usuario usando pool
+    const result = await runQuery(
       'UPDATE users SET estado_seguridad = $1 WHERE id = $2',
       ['NORMAL', id]
     );
@@ -1748,15 +1715,6 @@ app.post('/reactivar-usuario', async (req, res) => {
       success: false,
       error: error.message
     });
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-        console.log('🔌 Conexión cerrada correctamente');
-      } catch (endError) {
-        console.error('⚠️ Error cerrando conexión:', endError);
-      }
-    }
   }
 });
 
@@ -1876,9 +1834,8 @@ app.post('/test-dual', async (req, res) => {
   }
 });
 
-// 🌉 ENDPOINT WEB BRIDGE - REPLICA EL FLUJO DE GOOGLE SHEETS
+// 🌉 ENDPOINT WEB BRIDGE - REPLICA EL FLUJO DE GOOGLE SHEETS usando pool
 app.post('/api/buscar-correos-web', async (req, res) => {
-  let client;
   try {
     const { email_busqueda } = req.body;
     const authToken = req.headers.authorization;
@@ -1917,9 +1874,8 @@ app.post('/api/buscar-correos-web', async (req, res) => {
     const usuario = tokenValid.decoded;
     console.log(`🔐 Usuario autenticado: ${usuario.username} (ID: ${usuario.user_id})`);
     
-    client = await createConnection();
-
-    const sesionCheck = await client.query(
+    // ✅ Sesión aún activa en la base (runQuery)
+    const sesionCheck = await runQuery(
       'SELECT id FROM sessions WHERE token = $1 AND expires_at > NOW()',
       [token]
     );
@@ -1932,8 +1888,8 @@ app.post('/api/buscar-correos-web', async (req, res) => {
       });
     }
     
-    // 🎯 BUSCAR EMAILS ASOCIADOS AL USUARIO (IGUAL QUE GOOGLE SHEETS)
-    const emailsPermitidos = await client.query(`
+    // 🎯 BUSCAR EMAILS ASOCIADOS AL USUARIO (runQuery)
+    const emailsPermitidos = await runQuery(`
       SELECT a.email_address 
       FROM accounts a 
       JOIN user_accounts ua ON a.id = ua.account_id 
@@ -1945,7 +1901,7 @@ app.post('/api/buscar-correos-web', async (req, res) => {
     console.log(`📧 Emails permitidos para ${usuario.username}:`, emailsDelUsuario);
     console.log(`🔍 Email solicitado: ${email_busqueda.toLowerCase().trim()}`);
     
-    // 🔒 VALIDAR PERMISOS (IGUAL QUE GOOGLE SHEETS)
+    // 🔒 VALIDAR PERMISOS
     if (!emailsDelUsuario.includes(email_busqueda.toLowerCase().trim())) {
       console.log(`🚨 ACCESO DENEGADO: ${usuario.username} intentó acceder a email no autorizado`);
       return res.status(403).json({
@@ -1960,7 +1916,7 @@ app.post('/api/buscar-correos-web', async (req, res) => {
     
     console.log(`✅ ACCESO AUTORIZADO: ${usuario.username} puede buscar ${email_busqueda}`);
     
-    // 📧 BUSCAR CORREOS EN GMAIL (IGUAL QUE GOOGLE SHEETS)
+    // 📧 BUSCAR CORREOS EN GMAIL
     const correosEncontrados = await buscarCorreosEnGmail(email_busqueda);
     
     console.log(`📊 Encontrados ${correosEncontrados.length} correos para ${email_busqueda}`);
@@ -1992,15 +1948,6 @@ app.post('/api/buscar-correos-web', async (req, res) => {
       message: 'Error procesando la búsqueda',
       timestamp: new Date().toISOString()
     });
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-        console.log('🔌 Conexión cerrada en buscar-correos-web');
-      } catch (endError) {
-        console.error('⚠️ Error cerrando conexión:', endError);
-      }
-    }
   }
 });
 
@@ -2233,13 +2180,10 @@ app.post('/api/login', async (req, res) => {
 });
 */
 
-// 3. API usuarios para Google Sheets compatibility
+// 3. API usuarios para Google Sheets compatibility usando pool
 app.get('/api/usuarios', async (req, res) => {
-  let client;
   try {
-    client = await createConnection();
-
-    const result = await client.query(`
+    const result = await runQuery(`
       SELECT 
         u.id,
         u.username,
@@ -2265,7 +2209,6 @@ app.get('/api/usuarios', async (req, res) => {
         ultima_sesion: u.ultima_sesion,       // Nueva propiedad
         localizacion: u.localizacion          // Nueva propiedad
       })),
-
       database: 'Supabase PostgreSQL',
       timestamp: new Date().toLocaleString('es-PE'),
       api_version: 'Frontend Bridge v3.3'
@@ -2277,32 +2220,21 @@ app.get('/api/usuarios', async (req, res) => {
       success: false,
       error: error.message
     });
-  } finally {
-    if (client) {
-      try {
-        await client.end();
-      } catch (endError) {
-        console.error('⚠️ Error cerrando conexión:', endError);
-      }
-    }
   }
 });
 
-// Listar usuarios con sesiones activas (no expiradas)
+// Listar usuarios con sesiones activas (no expiradas) usando pool
 app.get('/api/usuarios-sesiones', async (req, res) => {
-  let client;
   try {
-    client = await createConnection();
-
     // Trae usuarios
-    const usuariosResult = await client.query(`
+    const usuariosResult = await runQuery(`
       SELECT id, username, rol, estado_seguridad 
       FROM users
       ORDER BY id ASC
     `);
 
     // Trae sesiones activas para todos los usuarios (las que expiraron no)
-    const sesionesResult = await client.query(`
+    const sesionesResult = await runQuery(`
       SELECT * FROM sessions 
       WHERE expires_at > NOW()
     `);
@@ -2342,20 +2274,16 @@ app.get('/api/usuarios-sesiones', async (req, res) => {
   } catch (error) {
     console.error('❌ Error consultando usuarios-sesiones:', error);
     res.status(500).json({ success: false, error: error.message });
-  } finally {
-    if (client) { try { await client.end(); } catch (e) {} }
   }
 });
 
-// 🧹 LIMPIEZA AUTOMÁTICA DE SESIONES EXPIRADAS (cada 10 minutos)
-import cron from 'node-cron'; // Si usas ES Modules, ya tienes esta sintaxis (si no: const cron = require('node-cron');)
+import cron from 'node-cron';
 
+// 🧹 LIMPIEZA AUTOMÁTICA DE SESIONES EXPIRADAS (cada hora al minuto 0)
 cron.schedule('0 * * * *', async () => { // Cada hora al minuto 0
-  let client;
   try {
     console.log('🧹 Iniciando limpieza automática de sesiones expiradas...');
-    client = await createConnection();
-    const result = await client.query(
+    const result = await runQuery(
       'DELETE FROM sessions WHERE expires_at < NOW() RETURNING id'
     );
     if (result.rowCount > 0) {
@@ -2365,8 +2293,6 @@ cron.schedule('0 * * * *', async () => { // Cada hora al minuto 0
     }
   } catch (error) {
     console.error('❌ Error limpiando sesiones expiradas:', error.message);
-  } finally {
-    if (client) { try { await client.end(); } catch (endError) {} }
   }
 });
 
