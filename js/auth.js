@@ -1,5 +1,5 @@
 // Configuration - BACKEND REAL CONECTADO
-const API_BASE_URL = 'https://nadasntuamor.com'; // ✅ TU URL REAL
+const API_BASE_URL = 'https://servidor-disney-produccion.onrender.com'; // ✅ TU URL REAL
 
 // DOM Elements
 const loginForm = document.getElementById('loginForm');
