@@ -10,7 +10,7 @@ autoLogoutWhenExpired();
 setInterval(autoLogoutWhenExpired, 60 * 1000); // Cada minuto
 
 // Configuration - BACKEND CONECTADO
-const API_BASE_URL = 'https://nadasntuamor.com'; // ✅ TU URL
+const API_BASE_URL = 'https://www.nadasntuamor.com'; // ✅ TU URL
 
 // DOM Elements
 const searchForm = document.getElementById('searchForm');

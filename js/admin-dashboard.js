@@ -10,7 +10,7 @@ autoLogoutWhenExpired();
 setInterval(autoLogoutWhenExpired, 60 * 1000); // Cada minuto
 
 // Configuration
-const API_BASE_URL = 'https://nadasntuamor.com';
+const API_BASE_URL = 'https://www.nadasntuamor.com';
 
 // DOM Elements
 const sidebarToggle = document.getElementById('sidebarToggle');
