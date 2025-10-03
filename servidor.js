@@ -798,6 +798,7 @@ async function obtenerCiudadPorIP(ip) {
 
 // LOGIN CON JWT usando pool
 app.post('/auth/login', async (req, res) => {
+	console.log("Body recibido en login:", req.body);
   try {
     const { username, password } = req.body;
     console.log('🔐 Intento de login JWT:', username);
@@ -814,6 +815,7 @@ app.post('/auth/login', async (req, res) => {
       'SELECT id, username, password_hash, estado_seguridad, rol FROM users WHERE username = $1',
       [username]
     );
+	console.log("Resultado SQL usuarios:", result.rows);
 
     if (result.rows.length === 0) {
       return res.status(401).json({
@@ -823,6 +825,7 @@ app.post('/auth/login', async (req, res) => {
     }
 
     const user = result.rows[0];
+	console.log("Usuario encontrado:", user);
 
     if (user.estado_seguridad === 'BLOQUEADO') {
       return res.status(401).json({
