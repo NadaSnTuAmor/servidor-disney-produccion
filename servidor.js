@@ -1437,12 +1437,6 @@ app.get('/usuarios', async (req, res) => {
       success: false,
       error: error.message 
     });
-  } catch (error) {
-    console.error('❌ Error obteniendo usuarios:', error);
-    res.status(500).json({ 
-      success: false,
-      error: error.message 
-    });
   }
 });
 
