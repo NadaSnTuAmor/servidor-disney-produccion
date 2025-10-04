@@ -36,7 +36,7 @@ const DB_CONFIG = {
     rejectUnauthorized: false
   },
   // 🔧 PARÁMETROS DE CONNECTION POOLING
-  max: 10,                    // Máximo 10 conexiones simultáneas (bajo para evitar límites)
+  max: 3,                    // Máximo 10 conexiones simultáneas (bajo para evitar límites)
   idleTimeoutMillis: 30000,   // 30 segundos para cerrar conexiones inactivas
   connectionTimeoutMillis: 10000, // 10 segundos timeout para establecer conexión
   statement_timeout: 15000,   // 15 segundos timeout para statements
